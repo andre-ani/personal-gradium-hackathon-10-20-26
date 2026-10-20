@@ -1,0 +1,6 @@
+{
+  "tool": "built-in image_gen",
+  "file": "cara-head-expressions-v4.png",
+  "reference": "cara-head-expressions-v3.png",
+  "prompt": "Edit this exact Cara expression sprite sheet. Make one focused change: add a subtle suggestion of hair to every head. Retain the abstract ageless horizontally wide rounded pebble head silhouette, all nine expressions, blue ink contours, ivory interior, relative cell locations and scale. Hair should be just TWO OR THREE short loose asymmetrical pen strokes laid sideways along the upper-left forehead/top edge, like a minimal off-center swept fringe. A casual tiny angular sideways swoosh, understated and sketchy, not a realistic hairstyle. It should hint at an expressive illustrated personality without implying age or gender. Absolutely NO upright curl, no single centered tuft, no looping baby forelock, no top knot, no ponytail, no big hair mass, no ears, no neck or body. Keep the existing eyes and faces unchanged. Same small hair marks in the same location and orientation in all nine frames. Keep the regular 3-column by 3-row sprite sheet of head-only expressions. Flat clean blue (#2455A6) line art, solid warm ivory interior, transparent exterior. No shading, shadows, halos, glow, gradients, texture, labels or background. No other design changes."
+}

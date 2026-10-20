@@ -1,11 +1,8 @@
 ---
 type: architecture
-title: Live voice and deferred graph layers
+title: Cara voice and grounded workspace context
 description: How the browser voice client connects to FastAPI and delegates audio orchestration to Gradbot, including session defaults and current failure boundaries.
 tags: [voice, gradbot, websocket, architecture]
-verified:
-  - by: openwiki/0.5.2
-    at: 2026-10-20T21:42:30.964Z
 sources:
   - id: openwiki-source-28b4d8cdf9e1063378426959
     resource: repo://frontend/app.js
@@ -15,34 +12,42 @@ sources:
     resource: repo://main.py
   - id: openwiki-source-a1398a6d4d565483f0f307bf
     resource: repo://providers.py
-generated: { by: "codex", at: "2026-10-20T21:42:30.964Z" }
+  - id: openwiki-source-ec4ce877367bf89fc6aca8bf
+    resource: repo://voice_session.py
+generated: { by: "codex", at: "2026-10-20T22:38:50.689Z" }
+verified:
+  - by: openwiki/0.5.2
+    at: 2026-10-20T22:38:50.689Z
 ---
 
-# Live voice and deferred graph layers
+# Cara voice and grounded workspace context
 
-The application keeps listening and drawing independent. `main.py` owns FastAPI sockets and session routing; Gradbot owns streaming speech and the voice conversation; `graph_engine.py` owns graph state and scheduling; `providers.py` owns Jev decisions and validated LLM proposals. `frontend/app.js` renders the G6 workspace and forwards transcribed user fragments to the graph socket.
+`main.py` exposes `/ws/chat` and binds each call to an existing graph session ID. Gradbot owns streaming STT, the conversational LLM and TTS. The repository's `voice_session.py` owns the surrounding concurrent input/output, config refresh, tool handling and bounded decoration-reaction loop. It cancels sibling tasks and closes the input handle/socket when a call ends.
 
-## Live flow
+## Fixed voice and conversation behavior
 
-1. `/ws/graph` creates an in-memory graph session, emits its ID and snapshot, and accepts incremental text or reset messages. Typed text uses the same path as speech.
-2. The browser initializes the Gradbot audio player before opening `/ws/chat`. It sends voice settings plus the graph session ID, and forwards captured encoded audio while listening.
-3. Gradbot transcription callbacks append user text to `/ws/graph`; assistant transcript text is displayed but is not ingested as user evidence.
-4. Explicit counts such as “three topics” reserve stable `topic-N` nodes without waiting for a provider. Explicit ordinal or list labels update these nodes in place. A 300 ms heartbeat emits one queued operation at a time.
-5. The semantic worker coalesces text, asks Jev bounded questions, and calls the refinement model only when the decision requires it. Provider work never blocks ingestion or the drawing heartbeat.
-6. Validated additions and updates join the same queue. An explicit parent relation queues its child node before its connecting edge. Semantic nodes remain provisional.
+The server fixes English and Cara — Irish Whiteboard, approved Take 2 (`3N8LkZVbM9P4V4Sn`). Browser-provided voice selections do not override this. Configuration disables speaking first and the silence self-reprompt timeout. Gradbot configuration loads at process import; restart after changing environment values. The static route setup disables voice-catalog selection.
 
-The graph is capped at 80 desired nodes and 160 pending operations. Reset and replacement invalidate in-flight semantic work. Continued appends may accept safe results about an earlier prefix, but newer deterministic node labels are protected from stale model overwrites. Graph state is session memory, not durable storage: closing the graph socket removes that session.
+Cara is an engaged Irish teaching assistant/diagram artist: interpret ideas rather than dictate labels, let the user finish, ask concrete questions and occasionally explain a grounded drawing choice. Responses should remain brief. Raw transcript, interpreted concepts, queued drawing work and actually rendered content are different states; the prompt expressly forbids treating queued work as already visible.
 
-## Voice policy and tools
+## Browser and protocol
 
-The server prompt asks the voice partner to listen and speak only to clarify a meandering, contradictory, or ambiguous concept. It forces `assistant_speaks_first=False` and `silence_timeout_s=0.0`, with an English voice fallback. `inspect_graph` reads the linked graph snapshot; `refine_graph` requests deferred reconsideration of the existing user transcript. It does not append an assistant paraphrase as new user evidence. Mid-session `on_config` is not implemented.
+The browser starts `SyncedAudioPlayer` before opening the voice socket, then sends a `start` message with the graph session ID. Captured encoded audio goes to the voice socket. Incoming player text callbacks append transcript content; user text is also forwarded to `/ws/graph`, while assistant text is not new graph evidence. The 240px word ribbon consumes the same transcript events beside the talking control.
 
-Explicit Stop, socket failures, and page exit call the shared voice cleanup path, stopping the player and closing the voice socket. A connected “Listening” indicator alone is not proof of provider response or audible output.
+The browser periodically sends a `config` acknowledgement containing its completed rendered revision. The server validates this against graph revision and rebuilds instructions using server-owned workspace data. Client messages do not supply arbitrary diagram labels or system instructions. Same-origin checks reject unrelated browser origins; missing server credentials and disconnected graph sessions fail explicitly.
 
-## Provider and security boundaries
+`inspect_graph` returns current bounded workspace context. `refine_graph` asks the existing interpreter to reconsider a concept against the original transcript; it does not insert an assistant paraphrase as user speech or promise immediate drawing. Config/tool callbacks reject a stale linked graph instance after disconnect.
 
-The Gradbot configuration loads at process import and is shared with its WebSocket bridge and routes, including voice selection. Jev and refinement configuration comes from server environment variables. Restart after configuration changes. Jev returns bounded classification probabilities, not free-text graph content. The refinement model returns a small validated operation list; unknown updates, unsupported operations, and invalid references are rejected. HTTP responses are read fully with a size cap, including chunked bodies.
+## Decorations and reactions
 
-The server rejects browser WebSocket requests with a different Origin host. Credentials never belong in browser messages or graph state. Provider failures leave explicit structure active and surface a sanitized status; the application does not silently replace Jev with simulated classifications.
+The graph server validates completed decoration receipts before exposing them in context. `voice_session.py` waits for a suitable idle window and claims a one-time opportunity from the graph. It refreshes the Gradbot config with that event; stale opportunities are invalidated and armed events expire. Ordinary voice commentary remains separate from a promised decoration reaction. Do not add a generic repeating praise timer.
 
-See [run and verification instructions](../quickstart.md). Focused Python tests cover queue order, stable IDs, safe concurrent refinement, reset/replacement invalidation, hierarchy edges, bounded responses, and fragmented provider JSON. Physical microphone capture, playback, and barge-in still require a browser/user acceptance check.
+## Cleanup and visual state
+
+Stop, socket failure/close, graph disconnect and page exit stop the player and close voice transport. Async microphone startup checks that its original graph session is still current before opening a call. Output mute changes gain after the SDK analyser: the microphone remains active and Cara can still visually speak. Avatar state follows voice events, analyser output and accepted decoration receipts, not invented activity.
+
+## Graph interpretation dependency
+
+Explicit counts can reserve blank slots immediately; one graph operation is emitted per heartbeat. Reset/replacement epochs invalidate stale semantic work, and changed basis nodes are protected while safe prefix results can finish during continued speech. Optional Jev classification and structured LLM refinement are separate adapters, but Jev is not a mandatory live prerequisite. Provider JSON is fully accumulated through EOF under a response size cap. See [graph pipeline](graph-pipeline.md) and [canvas/motion](canvas-and-motion.md).
+
+Useful focused checks are `test_voice_session.py`, `test_voice_context.py`, `test_decorations.py`, `cara-avatar.test.js` and `voice-output-mute.test.js`. A configuration-ready flag or “Listening” label proves neither successful provider output nor audible hardware playback; validate a real browser call for that outcome.

@@ -1,6 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { classifyGraphHierarchy, paperEdgeStyle } from '../frontend/graph-hierarchy.js';
 import { graphEdgeRoute } from '../frontend/graph-edge-routes.js';
+
+test('root topics and their branches receive stronger arrows than supporting details', () => {
+  const nodes = [{ id: 'root', kind: 'root' }, { id: 'topic' }, { id: 'detail' }];
+  const edges = [{ id: 'branch', source: 'root', target: 'topic' }, { id: 'detail', source: 'topic', target: 'detail' }];
+  const roles = classifyGraphHierarchy(nodes, edges);
+  assert.equal(roles.nodeRoles.get('topic'), 'main');
+  assert.equal(roles.nodeRoles.get('detail'), 'supporting');
+  assert.equal(roles.edgeRoles.get('branch'), 'primary');
+  assert.equal(roles.edgeRoles.get('detail'), 'supporting');
+  assert.ok(paperEdgeStyle('primary').lineWidth > paperEdgeStyle('supporting').lineWidth);
+});
 
 test('moving an unrelated card invalidates cached routes without changing edge data', () => {
   const nodes = [

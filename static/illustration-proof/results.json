@@ -1,0 +1,60 @@
+[
+  {
+    "model": "google/gemini-2.5-flash-lite",
+    "error": "Illustration could not be drawn safely."
+  },
+  {
+    "concept": "a bicycle with a basket of apples",
+    "model": "google/gemini-3.1-flash-lite",
+    "latency_ms": 1377,
+    "file": "sample-1.svg"
+  },
+  {
+    "concept": "a bicycle with a basket of apples",
+    "model": "google/gemini-3.5-flash-lite",
+    "latency_ms": 2055,
+    "file": "sample-2.svg"
+  },
+  {
+    "concept": "a kitchen with a stove and a pot",
+    "model": "google/gemini-3.1-flash-lite",
+    "latency_ms": 1812,
+    "file": "sample-3.svg",
+    "prompt_version": "pencil-v2"
+  },
+  {
+    "concept": "a bicycle with a basket of apples",
+    "model": "google/gemini-3.1-flash-lite",
+    "latency_ms": 1673,
+    "file": "sample-4.svg",
+    "prompt_version": "pencil-v2"
+  },
+  {
+    "concept": "a vegetable garden with a watering can",
+    "model": "google/gemini-3.1-flash-lite",
+    "latency_ms": 1637,
+    "file": "sample-5.svg",
+    "prompt_version": "pencil-v2"
+  },
+  {
+    "concept": "a kitchen with a stove and a pot",
+    "model": "anthropic/claude-opus-5.5",
+    "latency_ms": 11094,
+    "file": "sample-6.svg",
+    "prompt_version": "pencil-v2"
+  },
+  {
+    "concept": "a bicycle with a basket of apples",
+    "model": "anthropic/claude-opus-5.5",
+    "latency_ms": 7798,
+    "file": "sample-7.svg",
+    "prompt_version": "pencil-v2"
+  },
+  {
+    "concept": "a vegetable garden with a watering can",
+    "model": "anthropic/claude-opus-5.5",
+    "latency_ms": 9938,
+    "file": "sample-8.svg",
+    "prompt_version": "pencil-v2"
+  }
+]

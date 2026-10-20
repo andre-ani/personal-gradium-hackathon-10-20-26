@@ -1,0 +1,18 @@
+{
+  "tool": "built-in image_gen",
+  "file": "cara-head-expressions-v3.png",
+  "reference": "cara-head-expressions-v2.png",
+  "prompt": "Edit the supplied abstract Cara head expression sheet. Preserve the nine expressions, blue ink palette, warm ivory face fill, simple minimal line-art style, and head-only concept. Correct the silhouette so it no longer resembles a baby. REMOVE THE HAIR CURL COMPLETELY in every frame: no tuft, no curl, no hair, no crown mark, no antenna, no protrusion above the head. Replace the peaked teardrop/gumdrop silhouette with a gently irregular horizontally wide rounded rectangle, like a small hand-drawn pebble or abstract speech-shape with a FLAT gently wobbling upper edge and slightly asymmetric corners. Head height about 70 percent of its width. The whole design should feel like an ageless, genderless clever sketchbook doodle, never an infant face. Make the eyes smaller restrained dot marks and eyebrows simple short strokes. NO huge eyes, no cheeks, no blush, no nose, no ears, no hair, no neck, no body. Flat unshaded line art only, crisp single blue contour with rounded caps and slight handmade wobble, no gradients, NO halos, NO glows, NO shadows. Actual transparent exterior. Keep a regular 3-column by 3-row grid with equal sized cells and ample transparent gutters. Exactly the same head outline, dimensions, center, baseline and facial feature placement across all nine frames; only expressions differ. Row 1 neutral closed smile, attentive raised eyebrow, thoughtful sideways eyes and tiny slanted mouth. Row 2 happy open smile, delighted closed smiling eyes, blink. Row 3 small round speaking mouth, medium open speaking mouth, wide open speaking mouth. Faces remain understated and warm, not kawaii or baby-cute. No teeth or tongues. All shapes fully within their cells. No text, numbers, labels, borders, checkerboard pattern, or watermark.",
+  "states": [
+    "neutral",
+    "attentive",
+    "thinking",
+    "happy",
+    "delighted",
+    "blink",
+    "speaking-round",
+    "speaking-medium",
+    "speaking-wide"
+  ],
+  "note": "Stop-motion sprite-sheet direction. Frames require registration before application integration."
+}

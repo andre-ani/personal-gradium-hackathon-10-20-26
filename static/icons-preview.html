@@ -27,7 +27,7 @@
           linear-gradient(90deg, rgba(36, 85, 166, .035) 1px, transparent 1px),
           var(--preview-paper);
         background-size: 28px 28px, 28px 28px, auto;
-        font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+        font-family: 'Patrick Hand', cursive;
         font-synthesis: none;
         -webkit-font-smoothing: antialiased;
       }
@@ -260,7 +260,7 @@
         const { mountMorphingControl } = await import('/static/morphing-controls.js');
         for (const [id, from, to] of [['morph-mic','mic','stop'],['morph-chat','chat','close'],['morph-play','play','pause']]) {
           const button = document.getElementById(id);
-          Object.assign(button.style,{display:'inline-flex',alignItems:'center',gap:'12px',border:'0',borderRadius:'12px',padding:'16px',color:'#174a9c',background:'#f1f1ee',boxShadow:'0 6px 20px #28313a18',font:'inherit',cursor:'pointer'});
+          Object.assign(button.style,{display:'inline-flex',alignItems:'center',gap:'12px',border:'0',borderRadius:'0',padding:'16px',color:'#174a9c',background:'transparent',boxShadow:'none',font:'inherit',cursor:'pointer'});
           const control = mountMorphingControl(button,{from,to,size:28});
           button.onclick=()=>{const active=button.getAttribute('aria-pressed')!=='true';button.setAttribute('aria-pressed',String(active));control.set(active);};
         }

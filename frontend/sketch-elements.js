@@ -1,3 +1,4 @@
+import { drawWashiTape } from './washi-tape.js';
 /**
  * The graph's hand-drawn layer.
  *
@@ -9,6 +10,7 @@ import { Circle as GCircle, Path, Text as GText } from '@antv/g';
 import { BaseEdge, BaseNode, ExtensionCategory, register } from '@antv/g6';
 import { RoughGenerator } from 'roughjs/bin/generator.js';
 import { graphEdgeRoute } from './graph-edge-routes.js';
+import { paperTexturePattern } from './note-paper.js';
 
 export const SKETCH_NODE_TYPE = 'sketch-rect';
 export const SKETCH_EDGE_TYPE = 'sketch-cubic-horizontal';
@@ -102,18 +104,31 @@ function jitter(seed, index, amount) {
   return (value - Math.floor(value)) * amount * 2 - amount;
 }
 
-function irregularPaperPath(x, y, width, height, radius, seed) {
+function irregularPaperPath(x, y, width, height, radius, seed, paperCurl = 0) {
   const r = Math.max(2, Math.min(radius || 10, Math.min(width, height) / 2));
   const topLeft = r + jitter(seed, 1, 2.4);
   const topRight = r + jitter(seed, 2, 2.2);
   const bottomRight = r + jitter(seed, 3, 2.4);
   const bottomLeft = r + jitter(seed, 4, 2.2);
+  const curl = clamp(paperCurl);
+  const curlSize = curl
+    ? Math.min(24, Math.max(10, Math.min(width, height) * (0.08 + curl * 0.08)))
+    : 0;
+  const rightCorner = curlSize
+    ? [
+      `L${x + width + jitter(seed, 10, 1.2)} ${y + height - curlSize}`,
+      `Q${x + width + jitter(seed, 11, 1.8)} ${y + height - curlSize * 0.16} ${x + width - curlSize * 0.45} ${y + height + jitter(seed, 12, 1.6)}`,
+      `Q${x + width - curlSize * 0.7} ${y + height + jitter(seed, 13, 1.2)} ${x + width - curlSize} ${y + height + jitter(seed, 14, 1.2)}`,
+    ]
+    : [
+      `L${x + width + jitter(seed, 10, 1.2)} ${y + height - bottomRight}`,
+      `Q${x + width + jitter(seed, 11, 1.8)} ${y + height + jitter(seed, 12, 1.6)} ${x + width - bottomRight} ${y + height + jitter(seed, 13, 1.2)}`,
+    ];
   return [
     `M${x + topLeft} ${y + jitter(seed, 5, 1.2)}`,
     `L${x + width - topRight} ${y + jitter(seed, 6, 1.2)}`,
     `Q${x + width + jitter(seed, 7, 1.8)} ${y + jitter(seed, 8, 1.6)} ${x + width + jitter(seed, 9, 1.2)} ${y + bottomRight}`,
-    `L${x + width + jitter(seed, 10, 1.2)} ${y + height - bottomRight}`,
-    `Q${x + width + jitter(seed, 11, 1.8)} ${y + height + jitter(seed, 12, 1.6)} ${x + width - bottomRight} ${y + height + jitter(seed, 13, 1.2)}`,
+    ...rightCorner,
     `L${x + bottomLeft} ${y + height + jitter(seed, 14, 1.2)}`,
     `Q${x + jitter(seed, 15, 1.8)} ${y + height + jitter(seed, 16, 1.6)} ${x + jitter(seed, 17, 1.2)} ${y + height - bottomLeft}`,
     `L${x + jitter(seed, 18, 1.2)} ${y + topLeft}`,
@@ -121,9 +136,18 @@ function irregularPaperPath(x, y, width, height, radius, seed) {
   ].join(' ');
 }
 
-function nodePaperPath(variant, x, y, width, height, radius, seed) {
-  if (variant === 'anchor' || variant === 'note') return irregularPaperPath(x, y, width, height, radius, seed);
-  return roundedRectPath(x, y, width, height, variant === 'action' ? radius : 0);
+function nodePaperPath(variant, x, y, width, height, radius, seed, paperCurl = 0) {
+  // Every node is a sheet of paper. The seed changes the silhouette itself,
+  // so the edges stay imperfect after the visible outline is removed.
+  return irregularPaperPath(
+    x,
+    y,
+    width,
+    height,
+    radius,
+    seed,
+    variant === 'note' ? paperCurl : 0,
+  );
 }
 
 function accentDefinition(variant, x, y, width, height, padding, seed) {
@@ -140,11 +164,27 @@ function accentDefinition(variant, x, y, width, height, padding, seed) {
   return null;
 }
 
-function noteFoldDefinition(x, y, width, height, seed) {
-  const fold = Math.min(14, Math.max(9, Math.min(width, height) * 0.18));
-  const fx = x + width - fold;
-  const fy = y + jitter(seed, 35, 1.2);
-  return `M${fx} ${fy} L${x + width + jitter(seed, 36, 1)} ${y + fold + jitter(seed, 37, 1)} L${fx} ${y + fold}`;
+function noteCurlDefinition(x, y, width, height, seed, paperCurl = 0) {
+  const curl = clamp(paperCurl);
+  if (!curl) return null;
+  const size = Math.min(24, Math.max(10, Math.min(width, height) * (0.08 + curl * 0.08)));
+  const displacedX = jitter(seed, 35, 1.8) * curl;
+  const displacedY = jitter(seed, 36, 1.4) * curl;
+  const right = x + width + displacedX;
+  const bottom = y + height + displacedY;
+  const foldX = right - size;
+  const foldY = bottom - size;
+  const triangle = (offsetX, offsetY) => [
+    `M${foldX + offsetX} ${bottom + offsetY}`,
+    `Q${right - size * 0.18 + offsetX} ${bottom - size * 0.1 + offsetY} ${right + offsetX} ${foldY + offsetY}`,
+    `Q${right + size * 0.1 + offsetX} ${bottom - size * 0.24 + offsetY} ${right + size * 0.08 + offsetX} ${bottom + size * 0.06 + offsetY}`,
+    `Q${right - size * 0.38 + offsetX} ${bottom + size * 0.12 + offsetY} ${foldX + offsetX} ${bottom + offsetY}Z`,
+  ].join(' ');
+  return {
+    face: triangle(0, 0),
+    shadow: triangle(1.4 + curl * 1.8, 2.1 + curl * 2.2),
+    softShadow: triangle(0.2 + curl, 1 + curl),
+  };
 }
 
 function inkBleedDefinition(attributes, style, variant, x, y, width, height, seed) {
@@ -220,13 +260,16 @@ export class SketchNode extends BaseNode {
     const variant = nodeVariant(attributes);
     const radius = Number(style.radius ?? attributes.radius ?? 10);
     const seed = seedFor(attributes, this.id || 'node');
-    const roughStyle = { ...style, stroke: effectiveNodeStroke(style) };
+    const paperCurl = clamp(dataValue(attributes, 'paperCurl', style.paperCurl ?? 0.35));
+    // The silhouette carries the hand-made character now. Rough.js is still
+    // used for the paper fill, but its perimeter stroke is deliberately off.
+    const roughStyle = { ...style, stroke: 'none', lineWidth: 0 };
     const key = [
-      'node', variant, seed, width, height, radius, roughStyle.stroke, roughStyle.fill,
+      'node', variant, seed, width, height, radius, paperCurl, roughStyle.stroke, roughStyle.fill,
       roughStyle.lineWidth, roughStyle.roughness, roughStyle.bowing, roughStyle.fillStyle,
     ].join('|');
     return cachedPaths(key, () => generator.toPaths(
-      generator.path(nodePaperPath(variant, x, y, width, height, radius, seed), roughOptions(roughStyle, seed, { fill: true })),
+      generator.path(nodePaperPath(variant, x, y, width, height, radius, seed, paperCurl), roughOptions(roughStyle, seed, { fill: true })),
     ));
   }
 
@@ -235,11 +278,13 @@ export class SketchNode extends BaseNode {
     const [width, height] = this.getSize(attributes);
     const x = -width / 2;
     const y = -height / 2;
-    const paths = this.getSketchPaths(attributes, style);
-    const outline = paths.filter((item) => item.stroke && item.stroke !== 'none');
+    const variant = nodeVariant(attributes);
+    const radius = Number(style.radius ?? attributes.radius ?? 10);
+    const seed = seedFor(attributes, this.id || 'node');
+    const paperCurl = clamp(dataValue(attributes, 'paperCurl', style.paperCurl ?? 0.35));
+    const paperPath = nodePaperPath(variant, x, y, width, height, radius, seed, paperCurl);
     const perimeter = Math.max(width * 2 + height * 2, 1);
     const progress = dataValue(attributes, 'drawProgress', style.drawProgress);
-    const stroke = effectiveNodeStroke(style);
     return progressStyle({
       ...style,
       drawProgress: progress,
@@ -247,11 +292,15 @@ export class SketchNode extends BaseNode {
       y,
       width,
       height,
-      d: pathData(outline),
-      fill: 'none',
-      stroke,
-      strokeOpacity: style.strokeOpacity ?? 0.42,
-      lineWidth: style.lineWidth ?? 1.2,
+      d: paperPath,
+      // Keep the key shape for bounds/hit testing while removing its visual
+      // contribution. The paper surface and texture are separate paths.
+      fill: 'transparent',
+      fillOpacity: 0,
+      stroke: 'transparent',
+      strokeOpacity: 0,
+      lineWidth: 0,
+      pointerEvents: 'auto',
       shadowColor: 'transparent',
     }, progress, false, perimeter);
   }
@@ -272,24 +321,35 @@ export class SketchNode extends BaseNode {
     const y = -height / 2;
     const seed = seedFor(attributes, this.id || 'node');
     const padding = Number(dataValue(attributes, 'textPadding', style.textPadding ?? 20));
+    const paperCurl = clamp(dataValue(attributes, 'paperCurl', style.paperCurl ?? 0.35));
     const liftProgress = clamp(dataValue(attributes, 'liftProgress', style.liftProgress ?? 0));
-    const liftScale = 1 + 0.045 * liftProgress;
+    const liftScale = 1 + 0.075 * liftProgress;
     const paths = this.getSketchPaths(attributes, style);
     const fills = paths.filter((item) => item.fill && item.fill !== 'none');
+    const surfacePath = pathData(fills)
+      || nodePaperPath(variant, x, y, width, height, Number(style.radius ?? attributes.radius ?? 10), seed, paperCurl);
     const progress = dataValue(attributes, 'drawProgress', style.drawProgress) == null
       ? 1
       : clamp(dataValue(attributes, 'drawProgress', style.drawProgress));
-    this.upsert('fill', Path, fills.length ? {
-      d: pathData(fills),
-      fill: style.fill || '#faf8f1',
+    this.upsert('fill', Path, surfacePath ? {
+      d: surfacePath,
+      fill: style.fill || '#e5e6e3',
       fillOpacity: progress,
       stroke: 'none',
-      pointerEvents: 'auto',
+      pointerEvents: 'none',
       shadowColor: style.shadowColor || '#173b6b14',
-      shadowBlur: (style.shadowBlur ?? 14) + 22 * liftProgress,
-      shadowOffsetY: (style.shadowOffsetY ?? 4) + 9 * liftProgress,
+      shadowBlur: (style.shadowBlur ?? 14) + 28 * liftProgress,
+      shadowOffsetY: (style.shadowOffsetY ?? 4) + 12 * liftProgress,
     } : false, container);
     const key = this.upsert('key', Path, this.getKeyStyle(attributes), container);
+    this.upsert('paper-texture', Path, {
+      d: surfacePath,
+      fill: paperTexturePattern(seed),
+      fillOpacity: progress * (style.paperTextureOpacity ?? 0.78),
+      stroke: 'none',
+      pointerEvents: 'none',
+      zIndex: 1,
+    }, container);
 
     const inkBleed = inkBleedDefinition(attributes, style, variant, x, y, width, height, seed);
     this.upsert('ink-bleed', GCircle, inkBleed ? {
@@ -327,25 +387,45 @@ export class SketchNode extends BaseNode {
       pointerEvents: 'none',
     } : false, container);
 
-    if (variant === 'note' && dataValue(attributes, 'fold', true) !== false) {
-      const fold = generator.toPaths(generator.path(
-        noteFoldDefinition(x, y, width, height, seed),
-        roughOptions({
-          ...style,
-          stroke: style.accent || style.stroke || '#2455a6',
-          lineWidth: style.foldLineWidth ?? 1,
-          disableMultiStroke: true,
-        }, seed + 102),
-      ));
-      this.upsert('fold', Path, {
-        d: pathData(fold),
-        fill: 'none',
-        stroke: style.accent || style.stroke || '#2455a6',
-        lineWidth: style.foldLineWidth ?? 1,
-        opacity: progress * 0.5,
-        pointerEvents: 'none',
-      }, container);
-    } else this.upsert('fold', Path, false, container);
+    const curl = variant === 'note' && dataValue(attributes, 'fold', true) !== false
+      ? noteCurlDefinition(x, y, width, height, seed, paperCurl)
+      : null;
+    this.upsert('curl-shadow-soft', Path, curl ? {
+      d: curl.softShadow,
+      fill: '#707679',
+      fillOpacity: progress * (0.07 + 0.04 * liftProgress),
+      stroke: 'none',
+      shadowColor: '#4b515455',
+      shadowBlur: 3 + 3 * liftProgress,
+      shadowOffsetY: 1 + 2 * liftProgress,
+      pointerEvents: 'none',
+      zIndex: 0,
+    } : false, container);
+    this.upsert('curl-shadow', Path, curl ? {
+      d: curl.shadow,
+      fill: '#4c5356',
+      fillOpacity: progress * (0.11 + 0.08 * liftProgress),
+      stroke: 'none',
+      shadowColor: '#33393d66',
+      shadowBlur: 3 + 6 * liftProgress,
+      shadowOffsetY: 2 + 3 * liftProgress,
+      pointerEvents: 'none',
+      zIndex: 0,
+    } : false, container);
+    this.upsert('curl-face', Path, curl ? {
+      d: curl.face,
+      fill: style.paperCurlFill || '#f2f3f0',
+      fillOpacity: progress * (0.82 + 0.08 * liftProgress),
+      stroke: 'none',
+      shadowColor: '#454b4e2e',
+      shadowBlur: 1.5 + 3 * liftProgress,
+      shadowOffsetY: 1 + 2 * liftProgress,
+      pointerEvents: 'none',
+      zIndex: 1,
+    } : false, container);
+    // Clear the old fold child if a graph update arrives from a previous
+    // version of the note renderer. The curl has no colored crease or border.
+    this.upsert('fold', Path, false, container);
 
     const headingText = String(dataValue(attributes, 'headingText', '') || '').trim();
     const bodyText = String(dataValue(attributes, 'bodyText', '') || '').trim();
@@ -414,7 +494,7 @@ export class SketchNode extends BaseNode {
       y: bodyY,
       text: bodyText,
       fill: style.bodyFill || textColor,
-      fontFamily: style.bodyFontFamily || 'Figtree, -apple-system, BlinkMacSystemFont, sans-serif',
+      fontFamily: style.bodyFontFamily || 'Patrick Hand, cursive',
       fontSize: style.bodyFontSize ?? 13,
       fontWeight: style.bodyFontWeight ?? 400,
       lineHeight: bodyLineHeight,
@@ -431,6 +511,7 @@ export class SketchNode extends BaseNode {
     // This is an absolute local scale, so repeated graph updates never
     // compound the lift. The element origin is the node center; x/y data and
     // the key shape remain the source of truth for layout and hit testing.
+    drawWashiTape(this, attributes, container);
     this.setLocalScale(liftScale, liftScale, 1);
     return key;
   }

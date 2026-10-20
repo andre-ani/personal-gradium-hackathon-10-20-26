@@ -1,0 +1,13 @@
+Use case: logo-brand
+Asset type: compact Thread app logo raster master, targeted v2 edit
+Input image: Image 1 is the previous yarn speech-bubble logo; use it only as a style and composition reference.
+Primary request: Transform the hollow outline into a filled, plump ball of yarn shaped like a speech bubble. The ball silhouette itself must be made from several broad blue yarn bands that cross, overlap, and wind across the interior, visibly filling the center. The rounded yarn-ball body must flow into a clear pointed speech tail made from the same winding strands.
+Scene/backdrop: preserve a solid warm cream paper background, #F7F0E6.
+Subject: one compact filled yarn ball with a speech-bubble tail, centered with generous margin.
+Style/medium: simple flat hand-drawn blue-ink sketch, polished editorial app-mark illustration; broad clean rounded strokes with only a few readable strand overlaps.
+Composition/framing: square canvas, centered, legible at small icon sizes.
+Lighting/mood: flat even graphic treatment.
+Color palette: blue ink #2455A6 on warm cream #F7F0E6, no additional colors.
+Materials/textures: smooth simplified yarn bands, no tiny fibers or fuzz.
+Text (verbatim): none.
+Constraints: fill the interior with broad crossing/overlapping winding bands; absolutely no hollow empty center; no empty ring; no separate outer bubble outline around a ball; no small yarn ball sitting inside a bubble; no text, letters, knots, loose dangling ends, shading, gradients, drop shadow, 3D, photorealism, clutter, or watermark. Preserve the clean blue-on-cream style and integrated speech tail.

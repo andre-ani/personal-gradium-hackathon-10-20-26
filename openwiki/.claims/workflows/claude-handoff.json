@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f25929ecc78ad2aeb9de4ec843b40bef97e3c24a8a72b2de2d6304bc5286c735",
+  "claims": [
+    {
+      "id": "claim_9df1bc3f9e7b493c815e0af6f16bc07c",
+      "statement": "The live application fixes Cara's approved English voice and grounds tools and commentary in server-owned graph/render context.",
+      "evidence": [
+        {
+          "resource": "repo://main.py#L15-L155",
+          "version": "repo-lines-v1:sha256:393f159f8813bc6ed6b455ca88609829aef76c349f0ca02e274d457ebf793d90:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQxLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJiNTNkYWFlY2JlODVjYTQxNjYwNmRkNzE0YWE5MTJjYjA1NDAyNWIyYWNkZmU3NDk4NWMxZGU2ZTE5ZjNjMGQwIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIzMGMxZjE4OGYxNDJlZDdhODI0NjgwYjIwNzE3MmM1NTE5YmM2MTRhNDhmZGE3Y2YxNjdlZGI4ZGRmNzk5NTZjIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJhMWJiMjhiMWE4MDVhMjBjOTUyM2MzMjc2ZjQ1NTg2YTIwYTJlZmVlYjMwMzdhNGVmM2QxMDc0YmEwYWI1NTExIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI2NzM4YjZmOTNlNTRlZDM5M2RhOWM4MjU2ZWVhOGE2YzQxM2RiMmIzMjlmZGU1OGM5YjU4NDZmNDIyYWRhNGYwIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_f2baa4a6633145ba9460f30d2ecc5bda",
+      "statement": "Explicit topic counts can reserve slots immediately, but semantic interpretation owns concept naming and Jev is not required in the default live path.",
+      "evidence": [
+        {
+          "resource": "repo://README.md",
+          "version": "repo-file-v1:sha256:a3d1f0bd8b6ab3bf6ec9241c11c9eca11a4f55c91c5e63ba85e9266bec5c7632"
+        },
+        {
+          "resource": "repo://graph_engine.py#L130-L163",
+          "version": "repo-lines-v1:sha256:b41823f098bce5ad8f617f94e57e89eba1c25bb3b36ef206646727cbfc29af2f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyZWY1NTA4YzE5YzRjNjI3YWI0YzFkYTJkMzQyZmFjMjM1N2M4MjA5N2NkZTJkMjFiYWQwMTIxNDFkODY2OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3MTEyNWY0YTFlZmJmMTZlODI5NDY4MmUzNDY1Mzc5ZTY1MDgxMjUxNzIzY2IyZTNlMjE1MWEwMWNiODk1MGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYwYWUxN2I2MDliMzMxODNhNWZkNGJiZDliYjQ3NzUyMTE1MzUwZTg5OTY1ZGVkOGRkNTBiYjVmM2VjYTA0ZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUyNDUwNzNiM2NhOTljYzNkN2RkYWMwMzM3M2I1ZWU4ZjZkNmYwODU1ZjJkZTIyNjgyNDMyZjRhYjAyMDIxOGEifQ"
+        },
+        {
+          "resource": "repo://graph_engine.py#L282-L306",
+          "version": "repo-lines-v1:sha256:4f3d841990806bf12df6508099c81fa89201318b4f8ccd43dfcda424c7db974c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxMjM4NDZiN2NlZjY0MzNlZWFlODUwNWU2NDA0YWVmYWFkMmExYmY3YmZiNjE0N2VhNGFjNTNjZDkxOGJlMTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkYThmODc1NGEyMDRjMGU4M2ZjYzIxMWE4NWQ3YzRjYjNmM2I2YzA2ZDBmMWYzYmQxMjAwZDliZTk4ODFhZWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwOGFmMThlZGZhOWFiZmY0Mjc4MTU1MGFhZDk2ZjYzYjVhNWM2ZjUzMDg0M2E0MzE3M2Y3NWEzODViOTYwZWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk4ZWVmODA0ZjgyYjE1NjA4ZTdhYjJhOWMyOWFhMGM2YTUzMzY4ODEyMDMzOWQ2NDI1YWU0ZWJlYjUxNzY0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_5c451b4f74394c5c8ce716c57397b4d5",
+      "statement": "The selected live illustration model is Nano Banana Lite raster; the project retains saved SVG/raster comparisons and distinguishes generation measurements from client reveal.",
+      "evidence": [
+        {
+          "resource": "repo://.env.example#L12-L13",
+          "version": "repo-lines-v1:sha256:b0f2772505173a66f5d042706aee2f6bcbf8e0f8deffadb3fae8fc475c2c09d6:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODMxYTA5ODM5NTY0MTM2OGU3NWMxOTA3ZmUzZTU5M2ZiYzA5ZGY5ZmM3MWU3NDAzOGViY2RmZGZiZDBhOGUwYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGRhYzU5YzkwZjU5ZDc0NGVmZTEyM2Y0N2I2NGY4NTBhMDgxNmEwYWM3NjMzYWVkZmJhMTY1MzI2ZjUwZDhkMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDU3ZjdlOTc0MGQ5MGM5NjY1MDFiNGEyMzZlYzBiNmZmZjA4OWFhNGYwNDIyMzlhNzhhNmY5NjAwNjgyZDUwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://docs/illustrations.md",
+          "version": "repo-file-v1:sha256:16c862c013b45a470916b68f07c1698aa84e35ce0cc76ecdfb62c1b93176071c"
+        }
+      ]
+    },
+    {
+      "id": "claim_805019e09ea94e05ab83109df1154381",
+      "statement": "Graph and illustration state are process/session memory rather than durable persistence, and graph disconnect closes/removes the session.",
+      "evidence": [
+        {
+          "resource": "repo://illustrations.py#L177-L220",
+          "version": "repo-lines-v1:sha256:56b354d42e6a2efa77617c4f7e2ee754e01fb64e60f28ff4ab990d1a749183a8:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyNWY2NzU5ODcyM2FjYzM3MmEyZWYyMzM1YmQ1MGZhM2ZkMGY0NzFjYmZmNTZmODQ4MjgzNGZhMGE1ODgwMTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0YzZkZTc4M2QyNzg4OTY1MDA3OTkyZWM5ZTVmZDE2NDhhMWFlNzNjNzE2MTE4MGU0ODZkYzU2NDFmMTNhYjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjN2M0YjY5MzJiZDdiOWZiOWMzNmUwMDVlNTA4NmI1MzVhMDdjNWIzZjVlYTBkZDk1ZDkzNWI5YmY3ZTBiZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYwZmYxNmUwZTA4NTI5ZjZlYzZjODc4ODhhZWQyNjY2YTllMGQ5ZWVlMWExZjIyNWJlYzAzODliOTU5MTRkMjQifQ"
+        },
+        {
+          "resource": "repo://main.py#L178-L221",
+          "version": "repo-lines-v1:sha256:14d27501dae4d0c15eab04fa44a01198f5ac8dceebdcf7af108cf37fe77f4056:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhNTAwNzljZDYyNWU1MGE2YjIzMzNhYTI2OGNhZjRhNGJhNzA3M2Y5YWQ2NjYyNDhhMmE3M2E5MjgwMmYwOWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUwZjI5NDMzZDg4NTllYmE2NTgwZjIyYmM0NTU2MWNkMjhiNWEwYzk2NDA0YmZlOWY5Y2ZmYjllOGU1MGM4MWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjMTgyZmYwMTVjMTRkMTJhZGRkOWVlYzYxZjc2ZDEyZDRhMzQxNmQxOGIxMDUwYzFmYzg0YzQ3NDkzNDY4NjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE5YmMxYTNlY2FiNzk3OTVmNGU0MzBkMjEyYjQ4NDU2NjExOWY2OGMzMGQzNzEyN2E2NTljYmFlZTU2NjE4MGMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b2adb5204a7a4ba18cddc3c8f17bc52c",
+      "statement": "The project builds frontend source locally with pnpm and runs a loopback uvicorn development server with .env, wsproto and reload.",
+      "evidence": [
+        {
+          "resource": "repo://README.md",
+          "version": "repo-file-v1:sha256:a3d1f0bd8b6ab3bf6ec9241c11c9eca11a4f55c91c5e63ba85e9266bec5c7632"
+        },
+        {
+          "resource": "repo://package.json#L5-L8",
+          "version": "repo-lines-v1:sha256:caf4059822ee8123845d15ff1382fd59350ff3f347d5c9b7e9a4823dc2c679db:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzQ4MzNkNTk0OWMwM2E0MGNhOTUyNDkxNjEwYTY2NTk2NDRiM2FhNDY2MzYyZjc5OTAyMGRiZjE5ODE1NDdkYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQ1Y2QyZmI0ZjNkZjg4NDUxNTI1NWIzOTUyM2YyZjhiNTQ3MmJlZWE5ZjU2NmZmY2EyMDRkYjgwMjU2MTA0MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2MyNTI3Y2QzZTdkYjljYzI4M2UyZGJhMDU4NDRmZjVhZTA4Zjk1OWUwNTAzZjNhNDJlNDY3Nzk4ODVlMDc4YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzljNDY0ZTZmMjgyNjZiMjc5MjZkZGEyMmQ5ZjY5YWVhMzUzMWVhMzM4YTQxNjU3MzY4NTk1ZjJiNDc0YWI2YSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.2",
+    "at": "2026-10-20T22:38:50.689Z"
+  }
+}

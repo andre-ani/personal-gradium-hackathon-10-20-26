@@ -1,0 +1,13 @@
+{
+  "asset": "thread-yarn-bubble.png",
+  "generator": "built-in image_gen",
+  "source": "/Users/andreani/.codex/generated_images/01a15b6c-14ee-7190-b516-293ae75602ca/exec-2d062687-4026-4989-92dc-792f6f5a9bb1.png",
+  "dimensions": {
+    "width": 1254,
+    "height": 1254
+  },
+  "format": "PNG",
+  "hasAlpha": false,
+  "background": "warm cream #F7F0E6",
+  "promptFile": "thread-yarn-bubble.prompt.txt"
+}

@@ -2,13 +2,12 @@
 import asyncio
 import inspect
 import re
+import time
 from collections import deque
 
 _WORDS = {w: i for i, w in enumerate(('one two three four five six seven eight nine ten eleven twelve').split(), 1)}
 _NUM = r'(?:1[0-2]|[1-9]|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)'
 _COUNT = re.compile(r'\b(' + _NUM + r')\s+(?:topics?|points?|ideas?|things?|items?|steps?|subjects?)\b', re.I)
-_ORDINAL = re.compile(r'\b(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth)\b\s*[:,.)-]?\s*', re.I)
-_ORDERS = 'first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth'.split()
 
 
 class GraphSession:
@@ -30,15 +29,96 @@ class GraphSession:
         self._tasks = []
         self._wake = asyncio.Event()
         self._closed = False
+        self.meaning_status = 'idle'
+        self.meaning_message = None
+        self.question = None
+        self.refinement_focus = None
+        self.node_revisions = {}
+        self.decorations = {}
+        self._decoration_seen = set()
+        self._decoration_events = deque(maxlen=12)
+        self._decoration_sequence = 0
+        self._last_decoration_reaction = float('-inf')
 
     async def _emit(self, event):
+        if event.get('type') == 'graph_status':
+            self.meaning_status = event['status']
+            self.meaning_message = event.get('message')
         result = self.send(event)
         if inspect.isawaitable(result):
             await result
 
     def snapshot(self):
         return {'type': 'graph_snapshot', 'nodes': [dict(n) for n in self.nodes.values()],
-                'edges': [dict(e) for e in self.edges.values()], 'revision': self.revision}
+                'edges': [dict(e) for e in self.edges.values()], 'revision': self.revision,
+                'node_revisions': dict(self.node_revisions)}
+
+    @staticmethod
+    def _semantic_node(node):
+        return {key: node.get(key) for key in ('label', 'body', 'kind', 'status', 'parent_id')}
+
+    def decoration_applied(self, message):
+        """Accept a completed visual receipt, never client-authored narration."""
+        ident, level = message.get('node_id'), message.get('level')
+        revision, rendered = message.get('node_revision'), message.get('rendered_revision')
+        if not isinstance(ident, str) or type(level) is not int or level not in (1, 2):
+            return None
+        node = self.nodes.get(ident)
+        if (not node or node.get('status') in ('placeholder', 'pending') or not node.get('label')
+                or type(revision) is not int or revision != self.node_revisions.get(ident)
+                or type(rendered) is not int or not revision <= rendered <= self.revision
+                or self._semantic_node(node) != self._semantic_node(self._desired.get(ident, {}))):
+            return None
+        if any(ident in (op.get('edge', {}).get('source'), op.get('edge', {}).get('target'))
+               for op, _ in self._queue):
+            return None
+        key = (self._epoch, ident, revision, level)
+        previous = self.decorations.get(ident, {}).get('level', 0)
+        if key in self._decoration_seen or len(self._decoration_seen) >= 48 or level != previous + 1:
+            return None
+        if ident not in self.decorations and len(self.decorations) >= 6:
+            return None
+        self._decoration_seen.add(key)
+        self._decoration_sequence += 1
+        event = {'sequence': self._decoration_sequence, 'node_id': ident, 'label': node['label'],
+                 'level': level, 'node_revision': revision, 'rendered_revision': rendered,
+                 'kind': 'washi_tape', 'status': 'visibly_completed'}
+        self.decorations[ident] = event
+        self._decoration_events.append(event)
+        return event
+
+    def claim_decoration_reaction(self, now=None):
+        now = time.monotonic() if now is None else now
+        if (self._closed or self.meaning_status in ('pending', 'working') or self._queue
+                or now - self._last_decoration_reaction < 45):
+            return None
+        eligible = [event for event in self._decoration_events
+                    if self.decorations.get(event['node_id']) == event]
+        if not eligible:
+            return None
+        self._decoration_events.clear()
+        self._last_decoration_reaction = now
+        return dict(eligible[-1])
+
+    def voice_context(self, rendered_revision=None):
+        """Server-owned meaning and drawing state, without image payloads."""
+        def node(value):
+            return {key: value[key] for key in ('id', 'label', 'kind', 'status', 'parent_id') if key in value}
+        def edge(value):
+            return {key: value[key] for key in ('id', 'source', 'target', 'label') if key in value}
+        return {
+            'transcript': self.text[-4000:],
+            'canvas': {'revision': self.revision, 'nodes': [node(n) for n in self.nodes.values()],
+                       'edges': [edge(e) for e in list(self.edges.values())[-160:]],
+                       'omitted_edges': max(0, len(self.edges) - 160)},
+            'rendered_revision': rendered_revision,
+            'pending_nodes': [node(n) for key, n in self._desired.items() if n != self.nodes.get(key)],
+            'queue_depth': len(self._queue),
+            'interpretation_status': self.meaning_status,
+            'interpretation_message': self.meaning_message,
+            'clarifying_question': self.question,
+            'completed_decorations': [dict(event) for event in self.decorations.values()],
+        }
 
     async def start(self):
         if self._tasks:
@@ -56,34 +136,23 @@ class GraphSession:
             self._epoch += 1
         self.text = (self.text + ' ' + str(text)).strip() if mode == 'append' else str(text)
         self.text = self.text[-32000:]
+        self.meaning_status = 'pending'
+        self.meaning_message = None
+        self.question = None
         match = _COUNT.search(self.text)
         if match:
             token = match.group(1).lower()
             count = int(token) if token.isdigit() else _WORDS[token]
             self._ensure_slots(count)
-        labels = []
-        marks = list(_ORDINAL.finditer(self.text))
-        for i, mark in enumerate(marks):
-            end = marks[i + 1].start() if i + 1 < len(marks) else len(self.text)
-            label = self.text[mark.end():end].strip(' ,.;:-')
-            label = re.split(r'[.!?;](?:\s|$)|,', label, maxsplit=1)[0].strip()
-            label = re.sub(r'\s+and$', '', label, flags=re.I).strip()
-            if label:
-                labels.append((_ORDERS.index(mark.group(1).lower()), label))
-        listing = re.search(r'\b(?:topics|points|ideas|items|steps|subjects)\s*:\s*(.+)', self.text, re.I)
-        if listing:
-            parts = [p.strip(' ,.;') for p in re.split(r',\s*(?:and\s+)?|\s+and\s+', listing.group(1))]
-            labels.extend(enumerate(p for p in parts if p))
-        for index, label in labels[:80]:
-            self._ensure_slots(index + 1)
-            node = dict(self._desired[self._slots[index]], label=label[:160], status='named')
-            self._enqueue({'type': 'update_node', 'node': node}, 'structure')
+        # Counts may reserve space immediately. Only semantic interpretation may
+        # name a concept; copying ordinal/list fragments produces a transcript.
         self._wake.set()
 
-    async def request_refinement(self):
+    async def request_refinement(self, concept=None):
         if self._closed:
             return
         self._last_semantic = None
+        self.refinement_focus = str(concept)[:2000] if concept else None
         self._wake.set()
 
     def _ensure_slots(self, count):
@@ -140,17 +209,27 @@ class GraphSession:
             if not self._queue:
                 continue
             op, layer = self._queue.popleft()
+            affected = set()
             if op['type'] == 'add_edge':
+                affected.update((op['edge']['source'], op['edge']['target']))
                 self.edges[op['edge']['id']] = dict(op['edge'])
             else:
+                old = self.nodes.get(op['node']['id'], {})
+                if self._semantic_node(old) != self._semantic_node(op['node']):
+                    affected.add(op['node']['id'])
+                    affected.update(parent for parent in (old.get('parent_id'), op['node'].get('parent_id')) if parent)
                 self.nodes[op['node']['id']] = dict(op['node'])
             self.revision += 1
+            for ident in affected:
+                self.node_revisions[ident] = self.revision
+                self.decorations.pop(ident, None)
             await self._emit({'type': 'graph_patch', 'op': op, 'revision': self.revision,
-                              'layer': layer, 'queue_depth': len(self._queue)})
+                              'layer': layer, 'queue_depth': len(self._queue),
+                              'node_revisions': {ident: self.revision for ident in affected}})
 
     def _enqueue_meaning(self, op, basis):
         # Prefix results can add meaning during continued speech, but cannot
-        # rewrite nodes changed by newer deterministic evidence.
+        # rewrite nodes changed since their interpretation began.
         if op.get('type') in ('add_node', 'update_node'):
             node = op.get('node')
             if not isinstance(node, dict):
@@ -158,8 +237,6 @@ class GraphSession:
             ident = node.get('id')
             current = self._desired.get(ident)
             if current != basis.get(ident):
-                return
-            if current and current.get('status') == 'named' and node.get('label', current['label']) != current['label']:
                 return
             parent = node.get('parent_id')
             if parent is not None:
@@ -201,11 +278,11 @@ class GraphSession:
             basis = {key: dict(node) for key, node in self._desired.items()}
             graph = self.snapshot()
             graph['nodes'] = [dict(node) for node in basis.values()]
+            graph['focus'] = self.refinement_focus
             classify, refine = self.classify, self.refine
-            if classify is None or refine is None:
+            if refine is None:
                 try:
                     import providers
-                    classify = classify or providers.classify
                     refine = refine or providers.refine
                 except (ImportError, AttributeError):
                     await self._emit({'type': 'graph_status', 'layer': 'meaning', 'status': 'unavailable',
@@ -213,20 +290,25 @@ class GraphSession:
                     continue
             try:
                 await self._emit({'type': 'graph_status', 'layer': 'meaning', 'status': 'working', 'queue_depth': len(self._queue)})
-                decision = await classify(text, graph)
-                if epoch != self._epoch:
-                    continue
-                if not decision.get('needs_refinement', False):
-                    await self._emit({'type': 'graph_status', 'layer': 'meaning', 'status': 'idle'})
-                    continue
+                # Optional injected triage, never a required external dependency.
+                # In production the interpreter itself decides whether speech
+                # contributes meaning; greetings/repetitions return no operations.
+                if classify is not None:
+                    decision = await classify(text, graph)
+                    if epoch != self._epoch:
+                        continue
+                    if not decision.get('needs_refinement', False):
+                        await self._emit({'type': 'graph_status', 'layer': 'meaning', 'status': 'idle'})
+                        continue
                 result = await refine(text, graph)
                 if epoch != self._epoch:
                     continue
                 for op in result.get('operations', [])[:160]:
                     if isinstance(op, dict):
                         self._enqueue_meaning(op, basis)
-                if result.get('question'):
-                    await self._emit({'type': 'refinement', 'question': str(result['question'])})
+                self.question = result.get('question')
+                if self.question:
+                    await self._emit({'type': 'refinement', 'question': str(self.question)})
                 await self._emit({'type': 'graph_status', 'layer': 'meaning', 'status': 'idle', 'queue_depth': len(self._queue)})
             except asyncio.CancelledError:
                 raise
@@ -245,6 +327,14 @@ class GraphSession:
     async def reset(self):
         self._epoch += 1
         self.text = ''
+        self.meaning_status = 'idle'
+        self.meaning_message = None
+        self.question = None
+        self.refinement_focus = None
+        self.node_revisions.clear()
+        self.decorations.clear()
+        self._decoration_seen.clear()
+        self._decoration_events.clear()
         self._queue.clear()
         self._desired.clear()
         self._slots.clear()

@@ -1,0 +1,12 @@
+Use case: logo-brand
+Asset type: compact Thread app logo raster master
+Primary request: Create a single friendly speech bubble made entirely from a few continuous blue yarn strands. The rounded speech-bubble body and its pointed tail must be formed by the same looped yarn silhouette, so it reads as a speech bubble if it were made from yarn. Do not place a yarn ball inside a separate bubble.
+Scene/backdrop: solid warm cream paper background, #F7F0E6, clean and quiet.
+Subject: centered compact icon, one coherent rounded bubble outline built from three to five smooth blue strands, with a clearly readable integrated speech tail.
+Style/medium: flat hand-drawn blue-ink sketch, simple editorial app-mark illustration; clean rounded strokes, lightly imperfect by hand but polished.
+Composition/framing: square canvas, centered with generous margin, immediately legible at small icon sizes.
+Lighting/mood: flat even graphic treatment.
+Color palette: blue ink #2455A6 on warm cream #F7F0E6, no additional colors.
+Materials/textures: simplified smooth yarn strands with subtle strand overlaps; no fuzzy fibers.
+Text (verbatim): none.
+Constraints: no text, no letters, no separate enclosing bubble, no yarn ball, no knot or loose ends, no shading, no gradients, no drop shadow, no 3D, no photorealism, no clutter, no watermark, no tiny decorative details.

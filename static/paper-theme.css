@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=Patrick+Hand&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap');
 
 /* Paper is a quiet surface for the live shader and the idea map. */
 :root {
@@ -20,7 +20,7 @@
 
   /* Legacy variable names stay wired to the paper palette for the incumbent shell. */
   --violet: var(--blue-accent);
-  font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Patrick Hand', cursive;
   color: var(--ink-deep);
   background: var(--paper-base);
   font-synthesis: none;
@@ -36,7 +36,7 @@ body {
   min-height: 100dvh;
   color: var(--ink-deep);
   background: transparent;
-  font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Patrick Hand', cursive;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -132,7 +132,7 @@ a:focus-visible,
 }
 
 .tagline {
-  font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Patrick Hand', cursive;
   color: var(--muted-ink);
 }
 
@@ -432,7 +432,6 @@ a:focus-visible,
   .audio-meter { gap: 2px; width: 23px; }
 }
 
-
 .speech-ribbon {
   position: absolute;
   left: 50%;
@@ -449,7 +448,6 @@ a:focus-visible,
   -webkit-mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 4px), transparent);
 }
 
-
 .speech-word {
   position: absolute;
   left: 0;
@@ -465,3 +463,49 @@ a:focus-visible,
   line-height: 24px;
   transform-origin: center bottom;
 }
+
+/* Actions sit directly on the canvas; only graph notes carry paper surfaces. */
+.quiet, .quiet:hover, .quiet:active,
+.send, .send:hover,
+.dock, .mic, .mic:hover, .mic.recording {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.mic { color: var(--blue-ink); width: 40px; height: 44px; }
+.mic.recording { color: #a13b3b; }
+.send { display: inline-flex; align-items: center; gap: 7px; }
+.canvas-actions { flex-wrap: wrap; justify-content: flex-end; }
+
+@media (max-width: 600px) {
+  .graph-top { align-items: flex-start; gap: 8px; }
+  .graph-label { max-width: 44%; line-height: 1.4; }
+  .canvas-actions { gap: 0; }
+  .canvas-actions .quiet { padding: 7px; }
+}
+
+/* Cara is the voice control. Her mouth silences output; the small mic sits by her ear. */
+.dock { display: block; padding: 0; width: 76px; height: 68px; bottom: 16px; overflow: visible; }
+.cara-avatar { position: relative; left: auto; bottom: auto; transform: none; width: 76px; height: 68px; pointer-events: auto; }
+.cara-avatar canvas { display: block; width: 100%; height: 100%; mix-blend-mode: multiply; filter: url(#cara-paper-ink); }
+.cara-paper-filter { position: absolute; pointer-events: none; }
+.dock .mic { position: absolute; width: 32px; height: 36px; left: -32px; bottom: 15px; opacity: .55; }
+.dock .mic:hover, .dock .mic:focus-visible { opacity: 1; }
+.dock .mic.recording { color: var(--blue-ink); opacity: .85; }
+.dock .mic > svg { width: 16px; height: 16px; }
+.dock-status, .dock .audio-meter { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.cara-mouth { position: absolute; width: 44px; height: 44px; left: 16px; top: 30px; padding: 0; background: none; border: 0; border-radius: 50%; color: var(--blue-ink); cursor: pointer; }
+.cara-mouth:hover { background: none; }
+.cara-mouth:focus-visible { outline: 1px dashed currentColor; outline-offset: 0; }
+.cara-muted-mark { position: absolute; right: -10px; bottom: 10px; opacity: 0; }
+.cara-avatar[data-muted="true"] .cara-muted-mark { opacity: .75; }
+.dock .speech-ribbon { bottom: calc(100% + 10px); }
+@media (max-width: 600px) {
+  .dock { bottom: 12px; }
+  .cara-avatar { width: 76px; height: 68px; bottom: auto; }
+}
+/* A deliberate listening pose changes once with the state; it never rocks in a loop. */
+.cara-avatar[data-mood="listening"] canvas { transform: rotate(-5deg); transform-origin: 50% 60%; }
+.dock .mic-ring { display: none; }

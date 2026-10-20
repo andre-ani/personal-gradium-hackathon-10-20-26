@@ -1,19 +1,47 @@
 {
   "schemaVersion": 1,
   "pages": {
-    "/openwiki/architecture/voice-session.md": {
-      "pageVersion": "sha256:2db4eceac034112f64a1d404b51fb918d59200d4a2fe4c18e0d6941e0d606fc9",
+    "/openwiki/architecture/canvas-and-motion.md": {
+      "gitHead": "74000a537cb0757b9c36a423e9ce5a491467011a",
+      "sourceFingerprint": "sha256:5ff74699e8660398891d1f95185ab66a4ddacaaff5b8db6961083a6d13f5d514",
+      "pageVersion": "sha256:fd224dc834bcf9d09c76ccf77ef0f83605104b3196c5892ddc2e0a465e214bb5",
       "completedBy": "codex",
-      "completedRunId": "b68ddf76-048d-42c7-a4b6-fc1f5099d096",
-      "gitHead": "caa6d80920aa7c78ceaac61b151e4d7cc08e5c2e",
-      "sourceFingerprint": "sha256:4969c6baf3f19e01fcc0e1b99337b9d993a6268dd8230cf4a6ac5a80fb20d923"
+      "completedRunId": "83dd7579-b23a-4810-afe5-1d111901806a"
+    },
+    "/openwiki/architecture/graph-pipeline.md": {
+      "gitHead": "74000a537cb0757b9c36a423e9ce5a491467011a",
+      "sourceFingerprint": "sha256:5ff74699e8660398891d1f95185ab66a4ddacaaff5b8db6961083a6d13f5d514",
+      "pageVersion": "sha256:6f4bed579fb6101811173e7abce486e366cb86045645d72f98507af35e19c6d4",
+      "completedBy": "codex",
+      "completedRunId": "83dd7579-b23a-4810-afe5-1d111901806a"
+    },
+    "/openwiki/architecture/voice-session.md": {
+      "gitHead": "74000a537cb0757b9c36a423e9ce5a491467011a",
+      "sourceFingerprint": "sha256:5ff74699e8660398891d1f95185ab66a4ddacaaff5b8db6961083a6d13f5d514",
+      "pageVersion": "sha256:67bc537884c6661c425976f70ec89f381dc47810e78949486a8fe656c16c62db",
+      "completedBy": "codex",
+      "completedRunId": "83dd7579-b23a-4810-afe5-1d111901806a"
+    },
+    "/openwiki/integrations/illustrations.md": {
+      "gitHead": "74000a537cb0757b9c36a423e9ce5a491467011a",
+      "sourceFingerprint": "sha256:5ff74699e8660398891d1f95185ab66a4ddacaaff5b8db6961083a6d13f5d514",
+      "pageVersion": "sha256:07b1d136982301793d0c0e1ced010533ae9e6cf1215a35ebff22773b10c76a4a",
+      "completedBy": "codex",
+      "completedRunId": "83dd7579-b23a-4810-afe5-1d111901806a"
     },
     "/openwiki/quickstart.md": {
-      "pageVersion": "sha256:d0b387aefccf43358fec0f988984f3a02a81b3aa6922d71b9c124d6fed0d42cc",
+      "gitHead": "74000a537cb0757b9c36a423e9ce5a491467011a",
+      "sourceFingerprint": "sha256:5ff74699e8660398891d1f95185ab66a4ddacaaff5b8db6961083a6d13f5d514",
+      "pageVersion": "sha256:374dbe57aee7268b276ec8da065d7e61eaa12570f082c1d3c122b70f3ebf255c",
       "completedBy": "codex",
-      "completedRunId": "b68ddf76-048d-42c7-a4b6-fc1f5099d096",
-      "gitHead": "caa6d80920aa7c78ceaac61b151e4d7cc08e5c2e",
-      "sourceFingerprint": "sha256:4969c6baf3f19e01fcc0e1b99337b9d993a6268dd8230cf4a6ac5a80fb20d923"
+      "completedRunId": "83dd7579-b23a-4810-afe5-1d111901806a"
+    },
+    "/openwiki/workflows/claude-handoff.md": {
+      "gitHead": "74000a537cb0757b9c36a423e9ce5a491467011a",
+      "sourceFingerprint": "sha256:5ff74699e8660398891d1f95185ab66a4ddacaaff5b8db6961083a6d13f5d514",
+      "pageVersion": "sha256:f25929ecc78ad2aeb9de4ec843b40bef97e3c24a8a72b2de2d6304bc5286c735",
+      "completedBy": "codex",
+      "completedRunId": "83dd7579-b23a-4810-afe5-1d111901806a"
     }
   }
 }

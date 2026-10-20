@@ -11,7 +11,7 @@
   <a href="LICENSE-MIT"><img alt="MIT license" src="https://shieldcn.dev/badge/License-MIT-06B6D4.svg?variant=secondary" /></a>
 </p>
 
-A local voice-to-graph hackathon app. Explicit counts create topic placeholders immediately; labels and detail arrive through a serial animated queue. Gradbot handles voice, Jev classifies meaning, and deferred LLM refinement enriches the G6 graph.
+A local voice-to-graph hackathon app. Explicit counts create topic placeholders immediately; labels and detail arrive through a serial animated queue. Gradbot handles Cara’s voice; the interpretation model turns speech into concise concepts and relationships for the G6 graph. Raw transcript phrases never become labels directly. Cara receives server-owned diagram context as the canvas updates and can explain her drawing choices at natural pauses. Completed washi-tape animations are acknowledged against server-issued node revisions. Cara can react at a quiet moment, at most once per 45 seconds; active speech and queued audio take priority. The native silence continuation is armed for one opportunity and then disabled, rather than left running.
 
 ## Run locally
 
@@ -26,9 +26,9 @@ pnpm build
 uv run --env-file .env uvicorn main:app --host 127.0.0.1 --port 8000 --ws wsproto --reload
 ```
 
-Open [localhost:8000](http://127.0.0.1:8000). Try typed graph input without credentials, for example: “Three topics: design, voice, and graphs.” Allow microphone access for live voice. The assistant uses one fixed voice: Cara — Irish Whiteboard (approved Take 2, `3N8LkZVbM9P4V4Sn`).
+Open [localhost:8000](http://127.0.0.1:8000). Try typed graph input, for example: “Three topics: design, voice, and graphs.” Allow microphone access for live voice. The assistant uses one fixed voice: Cara — Irish Whiteboard (approved Take 2, `3N8LkZVbM9P4V4Sn`).
 
-Fill `.env` with valid `GRADIUM_API_KEY`, `LLM_API_KEY`, `LLM_BASE_URL`, and `LLM_MODEL` for live conversations. Jev classification needs its separate credential; see `.env.example` for configuration. Credentials stay server-side; `.env` is ignored by Git. Provider-backed voice and semantic integration require live verification with configured credentials.
+Fill `.env` with valid `GRADIUM_API_KEY`, `LLM_API_KEY`, `LLM_BASE_URL`, and `LLM_MODEL` for live conversations. Graph interpretation uses `GRAPH_MODEL` (falling back to `LLM_MODEL`) and needs a configured LLM. Jev is not required in the live graph path; explicit counts can still reserve blank topic slots without a provider. See `.env.example` for configuration. Credentials stay server-side; `.env` is ignored by Git. Provider-backed voice and semantic integration require live verification with configured credentials.
 
 ## Project context
 

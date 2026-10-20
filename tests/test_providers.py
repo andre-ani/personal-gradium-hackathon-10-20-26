@@ -73,6 +73,13 @@ class RefinementContractTests(unittest.TestCase):
         result = self.parse({'type': 'update_node', 'node': {'id': 'topic-1', 'label': 'Launch plan'}})
         self.assertEqual(result['node'], {'id': 'topic-1', 'label': 'Launch plan', 'kind': 'topic', 'status': 'placeholder'})
 
+    def test_rejects_transcript_sized_labels_and_matches_wire_limit(self):
+        from providers import REFINEMENT_SCHEMA
+        with self.assertRaises(ProviderUnavailable):
+            self.parse({'type': 'update_node', 'node': {'id': 'topic-1', 'label': 'x' * 81}})
+        node_schema = REFINEMENT_SCHEMA['properties']['operations']['items']['anyOf'][0]['properties']['node']
+        self.assertEqual(node_schema['properties']['label']['maxLength'], 80)
+
     def test_rejects_invalid_ids_references_and_delete(self):
         for operation in [
             {'type': 'update_node', 'node': {'id': '../bad', 'label': 'x'}},

@@ -1,4 +1,8 @@
 import { Graph } from '@antv/g6';
+import { refreshEdgeRoutes } from './graph-edge-routes.js';
+import { classifyGraphHierarchy, paperEdgeStyle } from './graph-hierarchy.js';
+import { createStableDecorations } from './stable-decorations.js';
+import { createSketchReorder } from './sketch-layout.js';
 import { mountMorphingControl } from './morphing-controls.js';
 import { createSketchIcon } from './sketch-icons.js';
 import { registerSketchElements } from './sketch-elements.js';
@@ -38,7 +42,7 @@ const graph = new Graph({
       size: [188, 64],
       radius: 16,
       labelPlacement: 'center',
-      labelFontFamily: 'Figtree, Avenir Next, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+      labelFontFamily: 'Patrick Hand, cursive',
       labelFontSize: 14,
       labelFill: palette.ink,
       labelWordWrap: true,
@@ -64,26 +68,46 @@ const graph = new Graph({
   behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element'],
 });
 
+const reorderMotion = createSketchReorder(graph, { reducedMotion: () => reducedMotion });
+const layoutPositions = new Map();
+let graphWork = Promise.resolve();
+let layoutIndex = -1;
+const orientations = ['horizontal', 'vertical', 'reverse'];
+let hierarchy = { nodeRoles: new Map(), edgeRoles: new Map() };
+let previewDrawing = false;
+let decorationCount = 0;
+const stableDecorations = createStableDecorations(graph, {
+  reducedMotion: () => reducedMotion,
+  getRenderedRevision: () => 1,
+  isReady: () => !previewDrawing && !reorderMotion.busy && !document.hidden,
+  runExclusive: task => {
+    const work = graphWork.then(task);
+    graphWork = work.catch(error => console.error(error));
+    return work;
+  },
+  onApplied: () => { document.querySelector('.stage').dataset.decorations = String(++decorationCount); },
+});
+
 const allNodes = [
-  { id: 'root', label: 'Organize around what you do', heading: 'Organize around what you do', body: 'Easy when things are where you expect them. It is not really about the size of the kitchen.', nodeVariant: 'anchor', kind: 'root', status: 'named', x: 700, y: 460 },
-  { id: 'easy', label: 'Easy when things are where expected', body: 'Kitchens feel easy when things are where you expect them.', nodeVariant: 'annotation', kind: 'topic', status: 'named', render: false, x: 235, y: 180 },
-  { id: 'size', label: 'Size is not the cause', body: "It isn't really about the size of the kitchen.", nodeVariant: 'annotation', kind: 'topic', status: 'named', render: false, x: 235, y: 330 },
-  { id: 'tea', label: 'Making tea', heading: 'Making tea', body: 'A very small job reveals the search.', nodeVariant: 'section', kind: 'topic', status: 'named', x: 700, y: 160 },
-  { id: 'spread', label: 'Tea kit', heading: 'Tea kit', body: 'Mug, kettle, tea bag, spoon, maybe milk — spread across corners means a little tour each morning.', nodeVariant: 'note', kind: 'topic', status: 'named', x: 1050, y: 160 },
-  { id: 'repeat', label: 'The morning search repeats', body: 'Every morning, sometimes twice.', nodeVariant: 'annotation', kind: 'topic', status: 'named', render: false, x: 1030, y: 345 },
-  { id: 'counter', label: 'A favorite counter?', heading: 'Favorite counter', body: 'Everything gradually gathers where the routine feels easiest.', nodeVariant: 'note', kind: 'topic', status: 'pending', x: 1100, y: 380 },
-  { id: 'similar', label: 'Group similar objects', heading: 'Group similar objects', body: 'Cups together, utensils in a drawer.', nodeVariant: 'section', kind: 'topic', status: 'named', x: 250, y: 720 },
-  { id: 'activity', label: 'Group by activity', heading: 'Group by activity', body: 'Put things near the activity they belong to.', nodeVariant: 'section', kind: 'topic', status: 'named', x: 590, y: 720 },
-  { id: 'tea-set', label: 'Tea bags + kettle + mugs nearby', heading: 'Tea set', body: 'Tea bags near the kettle; mugs just above it. Spoons stay in the main drawer for other things.', nodeVariant: 'note', kind: 'topic', status: 'named', x: 1030, y: 700 },
-  { id: 'spoons', label: 'Spoons stay in the shared drawer', body: 'Spoons stay in the main drawer for other things.', nodeVariant: 'annotation', kind: 'topic', status: 'named', render: false, x: 1320, y: 730 },
-  { id: 'observe', label: 'Watch the real sequence', body: 'Watch what you actually do.', nodeVariant: 'annotation', kind: 'topic', status: 'named', x: 250, y: 900 },
-  { id: 'chop', label: 'Boards by the left sink', heading: 'Chopping boards', body: 'Left side of the sink, even if the other cupboard is neater. Keep knives somewhere safe.', nodeVariant: 'note', kind: 'topic', status: 'named', x: 590, y: 930 },
-  { id: 'safe', label: 'Knives stay safe', body: 'Keep knives somewhere safe.', nodeVariant: 'annotation', kind: 'topic', status: 'named', render: false, x: 865, y: 950 },
-  { id: 'breakfast', label: 'One breakfast routine', heading: 'One breakfast routine', body: 'Pick one thing you do often.', nodeVariant: 'section', kind: 'topic', status: 'named', x: 250, y: 1080 },
-  { id: 'reach', label: 'Notice reach order and search', body: 'Notice what you reach for, in what order, and where you search.', nodeVariant: 'annotation', kind: 'topic', status: 'named', x: 510, y: 1080 },
-  { id: 'move', label: 'Move one thing', heading: 'Move one thing', body: 'Try the sequence again with one small change.', nodeVariant: 'action', kind: 'topic', status: 'named', x: 800, y: 1080 },
-  { id: 'compete', label: 'Mugs above the dishwasher', heading: 'Two jobs compete', body: 'Mugs above the dishwasher are easy to put away, but nowhere near the kettle.', nodeVariant: 'note', kind: 'topic', status: 'named', x: 1320, y: 850 },
-  { id: 'week', label: 'Try the arrangement for a week', heading: 'Try it for a week', body: 'See which arrangement is less annoying.', nodeVariant: 'action', kind: 'topic', status: 'named', x: 1320, y: 1080 },
+  { id: 'root', label: 'Organize around what you do', heading: 'Organize around what you do', body: 'Easy when things are where you expect them. It is not really about the size of the kitchen.', nodeVariant: 'anchor', kind: 'root', topicRole: 'main', status: 'named', x: 725, y: 145 },
+  { id: 'easy', label: 'Easy when things are where expected', body: 'Kitchens feel easy when things are where you expect them.', nodeVariant: 'annotation', kind: 'topic', topicRole: 'supporting', status: 'named', render: false, x: 430, y: 120 },
+  { id: 'size', label: 'Size is not the cause', body: "It isn't really about the size of the kitchen.", nodeVariant: 'annotation', kind: 'topic', topicRole: 'supporting', status: 'named', render: false, x: 1020, y: 120 },
+  { id: 'tea', label: 'Making tea', heading: 'Making tea', body: 'A very small job reveals the search.', nodeVariant: 'section', kind: 'topic', topicRole: 'main', status: 'named', x: 230, y: 390 },
+  { id: 'spread', label: 'Tea kit', heading: 'Tea kit', body: 'Mug, kettle, tea bag, spoon, maybe milk — spread across corners means a little tour each morning.', nodeVariant: 'note', kind: 'topic', topicRole: 'supporting', status: 'named', x: 230, y: 610 },
+  { id: 'repeat', label: 'The morning search repeats', body: 'Every morning, sometimes twice.', nodeVariant: 'annotation', kind: 'topic', topicRole: 'supporting', status: 'named', render: false, x: 470, y: 555 },
+  { id: 'counter', label: 'A favorite counter?', heading: 'Favorite counter', body: 'Everything gradually gathers where the routine feels easiest.', nodeVariant: 'note', kind: 'topic', topicRole: 'supporting', status: 'pending', x: 170, y: 820 },
+  { id: 'similar', label: 'Group similar objects', heading: 'Group similar objects', body: 'Cups together, utensils in a drawer.', nodeVariant: 'section', kind: 'topic', topicRole: 'main', status: 'named', x: 725, y: 390 },
+  { id: 'activity', label: 'Group by activity', heading: 'Group by activity', body: 'Put things near the activity they belong to.', nodeVariant: 'section', kind: 'topic', topicRole: 'main', status: 'named', x: 1220, y: 390 },
+  { id: 'tea-set', label: 'Tea bags + kettle + mugs nearby', heading: 'Tea set', body: 'Tea bags near the kettle; mugs just above it. Spoons stay in the main drawer for other things.', nodeVariant: 'note', kind: 'topic', topicRole: 'supporting', status: 'named', x: 1220, y: 610 },
+  { id: 'spoons', label: 'Spoons stay in the shared drawer', body: 'Spoons stay in the main drawer for other things.', nodeVariant: 'annotation', kind: 'topic', topicRole: 'supporting', status: 'named', render: false, x: 980, y: 610 },
+  { id: 'observe', label: 'Watch the real sequence', body: 'Watch what you actually do.', nodeVariant: 'annotation', kind: 'topic', topicRole: 'supporting', status: 'named', x: 760, y: 610 },
+  { id: 'chop', label: 'Boards by the left sink', heading: 'Chopping boards', body: 'Left side of the sink, even if the other cupboard is neater. Keep knives somewhere safe.', nodeVariant: 'note', kind: 'topic', topicRole: 'supporting', status: 'named', x: 760, y: 820 },
+  { id: 'safe', label: 'Knives stay safe', body: 'Keep knives somewhere safe.', nodeVariant: 'annotation', kind: 'topic', topicRole: 'supporting', status: 'named', render: false, x: 1050, y: 820 },
+  { id: 'breakfast', label: 'One breakfast routine', heading: 'One breakfast routine', body: 'Pick one thing you do often.', nodeVariant: 'section', kind: 'topic', topicRole: 'supporting', status: 'named', x: 470, y: 820 },
+  { id: 'reach', label: 'Notice reach order and search', body: 'Notice what you reach for, in what order, and where you search.', nodeVariant: 'annotation', kind: 'topic', topicRole: 'supporting', status: 'named', x: 550, y: 1030 },
+  { id: 'move', label: 'Move one thing', heading: 'Move one thing', body: 'Try the sequence again with one small change.', nodeVariant: 'action', kind: 'topic', topicRole: 'supporting', status: 'named', x: 950, y: 1030 },
+  { id: 'compete', label: 'Mugs above the dishwasher', heading: 'Two jobs compete', body: 'Mugs above the dishwasher are easy to put away, but nowhere near the kettle.', nodeVariant: 'note', kind: 'topic', topicRole: 'supporting', status: 'named', x: 230, y: 1030 },
+  { id: 'week', label: 'Try the arrangement for a week', heading: 'Try it for a week', body: 'See which arrangement is less annoying.', nodeVariant: 'action', kind: 'topic', topicRole: 'supporting', status: 'named', x: 1270, y: 1030 },
 ];
 
 const kitchenIcons = { root: 'utensils', tea: 'kettle', spread: 'mug', counter: 'repeat', similar: 'group', activity: 'activity', 'tea-set': 'tea', observe: 'repeat', chop: 'chopping-board', breakfast: 'breakfast', reach: 'activity', move: 'move', compete: 'dishwasher', week: 'calendar' };
@@ -94,10 +118,10 @@ const allEdges = [
   { id: 'root-size', source: 'root', target: 'size', priority: 'secondary' },
   { id: 'root-tea', source: 'root', target: 'tea', priority: 'primary' },
   { id: 'tea-spread', source: 'tea', target: 'spread', priority: 'primary' },
-  { id: 'spread-counter', source: 'spread', target: 'counter', priority: 'secondary' },
+  { id: 'spread-counter', source: 'spread', target: 'counter', priority: 'primary' },
   { id: 'spread-repeat', source: 'spread', target: 'repeat', priority: 'secondary' },
   { id: 'repeat-counter', source: 'repeat', target: 'counter', priority: 'secondary' },
-  { id: 'tea-similar', source: 'tea', target: 'similar', priority: 'secondary' },
+  { id: 'tea-similar', source: 'root', target: 'similar', priority: 'primary' },
   { id: 'tea-activity', source: 'tea', target: 'activity', priority: 'primary' },
   { id: 'root-activity', source: 'root', target: 'activity', priority: 'primary' },
   { id: 'activity-tea-set', source: 'activity', target: 'tea-set', priority: 'primary' },
@@ -106,7 +130,7 @@ const allEdges = [
   { id: 'observe-chop', source: 'observe', target: 'chop', priority: 'primary' },
   { id: 'chop-safe', source: 'chop', target: 'safe', priority: 'secondary' },
   { id: 'observe-breakfast', source: 'observe', target: 'breakfast', priority: 'primary' },
-  { id: 'breakfast-reach', source: 'breakfast', target: 'reach', priority: 'secondary' },
+  { id: 'breakfast-reach', source: 'breakfast', target: 'reach', priority: 'primary' },
   { id: 'reach-move', source: 'reach', target: 'move', priority: 'primary' },
   { id: 'tea-compete', source: 'tea', target: 'compete', priority: 'secondary' },
   { id: 'counter-compete', source: 'counter', target: 'compete', priority: 'secondary' },
@@ -151,14 +175,15 @@ let wakeWait;
 
 function nodeData(id, newNodeIds) {
   const node = allNodes.find((item) => item.id === id);
-  const paperStyle = paperNodeStyle(node);
+  const paperStyle = paperNodeStyle({ ...node, topicRole: hierarchy.nodeRoles.get(node.id) });
   return {
     id: node.id,
     data: { ...node, nodeVariant: paperStyle.nodeVariant, headingText: paperStyle.headingText, bodyText: paperStyle.bodyText },
     style: {
       ...paperStyle,
-      x: node.x,
-      y: node.y,
+      ...stableDecorations.styleFor(node.id),
+      x: layoutPositions.get(node.id)?.x ?? node.x,
+      y: layoutPositions.get(node.id)?.y ?? node.y,
       labelPlacement: 'center',
       labelFontFamily: paperStyle.bodyFontFamily,
       labelFill: paperStyle.labelFill || palette.ink,
@@ -181,17 +206,15 @@ function stableSeed(value) {
 
 function edgeData(id, newEdgeIds) {
   const edge = allEdges.find((item) => item.id === id);
-  const primary = edge.priority === 'primary';
+  const role = hierarchy.edgeRoles.get(id) || 'supporting';
   return {
     id: edge.id,
     source: edge.source,
     target: edge.target,
     style: {
-      stroke: primary ? palette.ink : palette.line,
-      lineWidth: primary ? 2 : 0.95,
-      lineDash: primary ? [] : [6, 7],
-      endArrow: true,
-      roughness: primary ? 0.62 : 0.78,
+      ...paperEdgeStyle(role),
+      routeRevision: Date.now(),
+      roughness: 0.6,
       seed: stableSeed(edge.id),
       drawProgress: reducedMotion || !newEdgeIds.has(edge.id) ? 1 : 0,
     },
@@ -211,7 +234,22 @@ function renderTranscript(index) {
   current?.scrollIntoView({ block: 'nearest' });
 }
 
-async function renderStep(step, token) {
+function renderStep(step, token) {
+  const work = graphWork.then(() => token === runToken ? renderStepNow(step, token) : undefined);
+  graphWork = work.catch(error => { console.error(error); $('step-message').textContent = 'The canvas could not update. Replay to try again.'; });
+  return work;
+}
+
+async function renderStepNow(step, token) {
+  previewDrawing = true;
+  try {
+  const visibleNodes = step.nodes.map(id => allNodes.find(node => node.id === id));
+  const visibleEdges = step.edges.map(id => allEdges.find(edge => edge.id === id));
+  hierarchy = classifyGraphHierarchy(visibleNodes, visibleEdges);
+  stableDecorations.sync(visibleNodes, visibleEdges, { nodeRevisions: Object.fromEntries(step.nodes.map(id => [id, step.index + 1])), renderedRevision: 1 });
+  for (const node of graph.getNodeData()) {
+    if (Number.isFinite(node.style?.x) && Number.isFinite(node.style?.y)) layoutPositions.set(node.id, { x: node.style.x, y: node.style.y });
+  }
   const shownNodes = new Set(renderStep.shownNodes || []);
   const shownEdges = new Set(renderStep.shownEdges || []);
   const newNodeIds = new Set(step.nodes.filter((id) => !shownNodes.has(id)));
@@ -221,6 +259,7 @@ async function renderStep(step, token) {
     edges: step.edges.map((id) => edgeData(id, newEdgeIds)),
   });
   await graph.render();
+  $('reorder').disabled = step.nodes.length === 0;
   await graph.fitView({ when: 'always', direction: 'both' }, false);
   if (graph.getZoom() > 1) await graph.zoomTo(1, false);
   entranceController?.abort();
@@ -238,15 +277,23 @@ async function renderStep(step, token) {
   renderTranscript(step.index);
   renderStep.shownNodes = step.nodes;
   renderStep.shownEdges = step.edges;
+  } finally { previewDrawing = false; }
 }
 
 async function runDemo() {
+  stableDecorations.reset(); decorationCount = 0; document.querySelector('.stage').dataset.decorations = '0';
   const token = ++runToken;
+  layoutIndex = -1;
+  reorderLabel.textContent = 'Rearrange';
+  reorderMotion.cancel();
   cancelWait();
   entranceController?.abort();
   resetSketchEntrance(graph);
+  layoutPositions.clear();
   renderStep.shownNodes = [];
   renderStep.shownEdges = [];
+  await graphWork;
+  if (token !== runToken) return;
   graph.setData({ nodes: [], edges: [] });
   await graph.render();
   $('draw').disabled = true;
@@ -265,19 +312,29 @@ async function runDemo() {
 }
 
 function reset() {
-  runToken += 1;
+  stableDecorations.reset(); decorationCount = 0; document.querySelector('.stage').dataset.decorations = '0';
+  const token = ++runToken;
+  layoutIndex = -1;
+  reorderLabel.textContent = 'Rearrange';
   cancelWait();
   entranceController?.abort();
+  reorderMotion.cancel();
   resetSketchEntrance(graph);
+  layoutPositions.clear();
   renderStep.shownNodes = [];
   renderStep.shownEdges = [];
-  graph.setData({ nodes: [], edges: [] });
-  graph.render();
+  graphWork = graphWork.then(async () => {
+    if (token !== runToken) return;
+    graph.setData({ nodes: [], edges: [] });
+    await graph.render();
+    $('reorder').disabled = true;
+  }).catch(error => { console.error(error); $('step-message').textContent = 'The canvas could not reset. Replay to try again.'; });
   $('step-title').textContent = 'Ready to draw';
   $('step-message').textContent = 'Replay the kitchen story to inspect the sketch renderer.';
   $('transcript').replaceChildren();
   $('draw').disabled = false;
   $('reset').disabled = false;
+  $('reorder').disabled = true;
 }
 
 function cancelWait() {
@@ -298,6 +355,40 @@ function waitForNextStage(token) {
     if (token !== runToken) cancelWait();
   });
 }
+
+const reorderLabel = document.createElement('span');
+reorderLabel.textContent = 'Rearrange';
+$('reorder').replaceChildren(reorderLabel);
+const reorderIcon = mountMorphingControl($('reorder'), { from: 'activity', to: 'move', size: 18 });
+$('reorder').onclick = () => {
+  const token = runToken;
+  const orientation = orientations[++layoutIndex % orientations.length];
+  $('reorder').disabled = true;
+  $('reorder').setAttribute('aria-busy', 'true');
+  reorderIcon.set(true);
+  graphWork = graphWork.then(async () => {
+    if (token !== runToken || !graph.getNodeData().length) return;
+      const targets = await reorderMotion.reorder(orientation);
+    if (token !== runToken) return;
+    for (const node of graph.getNodeData()) layoutPositions.set(node.id, { x: node.style.x, y: node.style.y });
+    if (!targets.length) return;
+    await refreshEdgeRoutes(graph);
+    await graph.fitView({ when: 'always', direction: 'both' }, false);
+    if (graph.getZoom() > 1) await graph.zoomTo(1, false);
+    reorderLabel.textContent = orientation === 'reverse' ? 'Right to left' : orientation[0].toUpperCase() + orientation.slice(1);
+    $('reorder').title = 'Rearrange again to change orientation';
+  }).catch(error => {
+    console.error(error);
+    $('step-message').textContent = 'The layout could not update. Try rearranging again.';
+  }).finally(() => {
+    reorderIcon.set(false);
+    $('reorder').removeAttribute('aria-busy');
+    $('reorder').disabled = graph.getNodeData().length === 0;
+  });
+};
+$('graph').addEventListener('pointerdown', () => reorderMotion.cancel());
+graph.on('node:dragend', () => { graphWork = graphWork.then(() => refreshEdgeRoutes(graph)).catch(error => console.error(error)); });
+window.addEventListener('pagehide', () => { stableDecorations.dispose(); reorderMotion.dispose(); });
 
 const scriptMorph = mountMorphingControl($('script-toggle'), {from:'chat',to:'close',size:18});
 $('draw').prepend(createSketchIcon('replay', {size:18,decorative:true}));
@@ -321,4 +412,9 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && !$('script-panel').hidden) setScriptOpen(false);
 });
 mountPaperBackground();
-runDemo();
+if (new URLSearchParams(location.search).get('scene') === 'complete') {
+  const last = steps.at(-1);
+  renderStep.shownNodes = last.nodes;
+  renderStep.shownEdges = last.edges;
+  void renderStep(last, runToken);
+} else runDemo();

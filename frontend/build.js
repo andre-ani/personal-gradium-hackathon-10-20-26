@@ -1,2 +1,2 @@
 import { build } from 'esbuild';
-await build({ entryPoints: ['frontend/app.js', 'frontend/sketch-preview.js', 'frontend/sketch-icons.js', 'frontend/morphing-controls.js'], bundle: true, minify: true, format: 'esm', outdir: 'static', logLevel: 'info' });
+await build({ entryPoints: ['frontend/app.js', 'frontend/sketch-preview.js', 'frontend/sketch-icons.js', 'frontend/morphing-controls.js', 'frontend/illustration-proof.js', 'frontend/raster-reveal-preview.js'], bundle: true, minify: true, format: 'esm', outdir: 'static', logLevel: 'info' });

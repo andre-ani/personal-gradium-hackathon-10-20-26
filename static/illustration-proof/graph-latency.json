@@ -1,0 +1,29 @@
+[
+  {
+    "at_ms": 5717,
+    "layer": "illustration",
+    "id": "topic-1",
+    "status": "provisional",
+    "label": "Kitchen",
+    "after_label_ms": 2707,
+    "model": "google/gemini-3.1-flash-lite"
+  },
+  {
+    "at_ms": 6017,
+    "layer": "illustration",
+    "id": "topic-2",
+    "status": "provisional",
+    "label": "Bicycle",
+    "after_label_ms": 2706,
+    "model": "google/gemini-3.1-flash-lite"
+  },
+  {
+    "at_ms": 7536,
+    "layer": "illustration",
+    "id": "topic-3",
+    "status": "provisional",
+    "label": "Vegetable Garden",
+    "after_label_ms": 3924,
+    "model": "google/gemini-3.1-flash-lite"
+  }
+]

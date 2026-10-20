@@ -1,0 +1,18 @@
+{
+  "tool": "built-in image_gen",
+  "file": "cara-head-expressions-v2.png",
+  "reference": "cara-expressions-v1.png",
+  "prompt": "Redesign the referenced character completely into an ABSTRACT AGELESS DOODLE HEAD ONLY for a voice assistant named Cara. The current human child appearance must be removed. Create a clean expression sprite sheet, exactly 9 isolated heads in a regular 3-column by 3-row grid, identical scale, identical head silhouette and identical centered registration point in every cell. The character is an ambiguous friendly little ink doodle, not a human child, not a realistic person. Head silhouette: a rounded slightly asymmetric pebble / soft rounded square with ONE tiny curled pen stroke at its crown, no human hairstyle. Two simple blue dot eyes, tiny expressive eyebrows, simple tiny mouth. NO nose, NO ears, NO hair ponytail, NO cheeks, NO freckles, NO blush, NO eyelashes, NO neck, NO shoulders, NO hands, NO body, NO clothing, NO baby proportions, NO realistic anatomy. Age and gender are undefined. Think a charming abstract sketchbook face drawn in five confident strokes, calm and clever rather than cute toddler mascot. ONLY flat clean blue ink contours (#2455A6) and a solid warm ivory face interior, genuinely transparent exterior. Minimal line art with round caps and a slight hand-made wobble; no shading, no gradients, no glows or halo, no texture, no shadows, no background. The exact same head outline, curl, size, eye baseline and center across all nine frames. Only face marks change. Row 1: neutral small closed smile / attentive with slightly raised brows / thinking with eyes glancing up-left and mouth a tiny sideways dash. Row 2: happy open smile / delighted eyes closed into two simple upward arcs / blink with two short eyelid strokes and closed smile. Row 3: speaking mouth small round open oval / speaking mouth medium open horizontal bean / speaking mouth wider open rounded shape. Mouth shapes must be simple blue ink outlines with ivory or blue interiors, NO teeth or tongue. Make expressions understated, readable at 48 pixels, and visibly distinct. Intended for STOP-MOTION FRAME SWAPPING in a small web UI, not interpolated animation: registration consistency is critical. Plenty of transparent gutter between heads, equal square cells, all nine entirely visible, no outlines around cells. No text, no labels, no numbers, no watermark. Use the supplied image only as a blue-ink palette reference; do NOT retain its human girl identity.",
+  "states": [
+    "neutral",
+    "attentive",
+    "thinking",
+    "happy",
+    "delighted",
+    "blink",
+    "speaking-round",
+    "speaking-medium",
+    "speaking-wide"
+  ],
+  "note": "Design sheet. Individual frames still need extraction and registration before frame-swapping integration."
+}

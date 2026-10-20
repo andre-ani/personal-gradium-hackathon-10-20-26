@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:fd224dc834bcf9d09c76ccf77ef0f83605104b3196c5892ddc2e0a465e214bb5",
+  "claims": [
+    {
+      "id": "claim_ab012f416100495c85bdeffb6585138e",
+      "statement": "The browser performs initial graph.render then incremental graph.draw, keeps camera fitting independent of entrance animation, and forwards rendered revisions separately from queued state.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/app.js#L125-L150",
+          "version": "repo-lines-v1:sha256:1bb4917d690690d4f7c170f038994397ea890606d261a83f81785708ca6201e4:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZmZmMyYjE2ZmM1YTc2Y2I1NjdhNWU0ZGZhOGU0NDRmNmUyNTcxMDViY2ZjNmRkYjZhMDM1MDYwNzc3MGRmMWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0MWFlOTk4NDk1YmE1M2VkZGE2NTExNDY0YjBjMGZkMTBlMTRjYmQyNDFjYjZhN2U3ZTI5ZjliZjY0ZWI3NzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc3NDU5MzY5MzE3YjFjMzU2MzM2ZjZmN2Y1NTM0YmU4NDVmOGRkZTRiOTNkMWE0OTcxODRjNzIxMWU5Y2IwNWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk5YTFiYmRkNjllNmI0OTZmOTM1OThjYjBkZmI2NWY4MjlhYWRkNjIzODFhM2ExYTczOTM4NGE4MGJiMTY3YWEifQ"
+        },
+        {
+          "resource": "repo://frontend/app.js#L49-L85",
+          "version": "repo-lines-v1:sha256:2b992324d849f34da11c80f5a36b71a357f4656beb111c106c5221001eadc146:eyJzZWxlY3RlZExpbmVDb3VudCI6MzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1ZGNmYzdmMmViZWIwOTBjOTBmOTg4ZWU3NTViNDViMmM3NjgwNDNmOWQwYjQ3YmUxYzBiMTA3NzMyZThlNjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwZTYyYzRkNjBkMTBlMWZhNWEwOGUzZWE0YjMzZTlmNGYyYmViNWY3NDQyMWFlMmRiOGJkOGJjNDE3ZGQwMjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFhNmZiNmQxYWZiMjJmOTk5NWMwYWVhY2Q2NzQ0YWE2Nzg0ZTA0MjUyZDg5NTRlNTAwYmU0OTg0MTVkZDhhZTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6c024d8b513840699a92368404d433f8",
+      "statement": "The viewport controller calculates fits without measurement teleports, normalizes G6 points to finite 2D pan deltas, respects manual framing, and preserves origin through resize.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/viewport-motion.js",
+          "version": "repo-file-v1:sha256:3149ff4cb5c9e7b0d530accbd811a0ede42a75fbdae78c2ad83918dda056696a"
+        }
+      ]
+    },
+    {
+      "id": "claim_12891294a9be471b9abf44ac8f0c7324",
+      "statement": "Semantic arrow routing separates attachment lanes and routes long row-skipping links through smooth exterior curves rather than square-corner or decorative-knot paths.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/edge-geometry.js",
+          "version": "repo-file-v1:sha256:db5b5f7d41c5664ccfdf95a1c3dc4ddb0ff47c1a700b6ce71f01717adb477933"
+        },
+        {
+          "resource": "repo://frontend/graph-edge-routes.js",
+          "version": "repo-file-v1:sha256:26431bf9f8f7191bfa0d34ceb63f11ca1f2673436ccc70f22d8314fbba94be7d"
+        }
+      ]
+    },
+    {
+      "id": "claim_8e338bcceb754c80828d9d6172f33bc6",
+      "statement": "The 240px speech ribbon queues words, springs each into view, moves the line left, and bounds queued content while the full transcript remains separate.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/speech-ribbon.js",
+          "version": "repo-file-v1:sha256:61c37cb4a5a3d5f02e2f5b8ee3769fa241efaa202e0418241c21396ef829b0d1"
+        }
+      ]
+    },
+    {
+      "id": "claim_a6fdd4dce0b243239ae08931f861df90",
+      "statement": "Output mute inserts a gain after the SDK output analyser, so Cara can remain visually speaking while her sound is muted.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/voice-output-mute.js",
+          "version": "repo-file-v1:sha256:87c7ba512ba43545347ec348aec8a852909c23415f26e81f816e8ce158a873d9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.2",
+    "at": "2026-10-20T22:38:50.689Z"
+  }
+}

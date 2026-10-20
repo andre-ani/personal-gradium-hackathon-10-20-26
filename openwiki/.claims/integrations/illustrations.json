@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:07b1d136982301793d0c0e1ced010533ae9e6cf1215a35ebff22773b10c76a4a",
+  "claims": [
+    {
+      "id": "claim_0c036c8ba3f34700aa0e2da089d10adc",
+      "statement": "Live raster generation defaults to Nano Banana Lite through the configured OpenRouter image endpoint, requests 1K white-background output, validates JPEG/PNG bounds and keeps bytes private.",
+      "evidence": [
+        {
+          "resource": "repo://.env.example#L12-L13",
+          "version": "repo-lines-v1:sha256:b0f2772505173a66f5d042706aee2f6bcbf8e0f8deffadb3fae8fc475c2c09d6:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODMxYTA5ODM5NTY0MTM2OGU3NWMxOTA3ZmUzZTU5M2ZiYzA5ZGY5ZmM3MWU3NDAzOGViY2RmZGZiZDBhOGUwYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGRhYzU5YzkwZjU5ZDc0NGVmZTEyM2Y0N2I2NGY4NTBhMDgxNmEwYWM3NjMzYWVkZmJhMTY1MzI2ZjUwZDhkMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDU3ZjdlOTc0MGQ5MGM5NjY1MDFiNGEyMzZlYzBiNmZmZjA4OWFhNGYwNDIyMzlhNzhhNmY5NjAwNjgyZDUwZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://illustrations.py#L128-L175",
+          "version": "repo-lines-v1:sha256:a4d1bf41b1dac070ef00be1dfc715f5a439a17c5a513dd18657f2893fef52bd7:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2NjIxYTU4ZDAwNzUwNzQ1NTIxMWFkZTg4ODkyMGE1ZWM5NzE4NTZhN2JmMGIwYzUwYWU5OTg2OGE4ODdkOTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFiOTliYWFjNjY1ODU1NTQ0NTUxZmYyMTk5NDZmZGI0ZmFlNzJlZTdiNjE2MjgyNWQyMmNhZmQ4YjRkNWMwN2YiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNjNzYxMWQzMTJiNTkwOTM1OGRjZTc5NWMyMGViNGNhMzRhYmRhN2JmYTJjYTk2N2FiN2YxN2Q4ZDQzNWM4ZTIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4187187938484e78bdab548b3e50707c",
+      "statement": "Illustration completion joins the existing graph queue only for the latest matching concept; reset/close and concept changes invalidate stale delivery without blocking ingestion.",
+      "evidence": [
+        {
+          "resource": "repo://illustrated_graph.py#L15-L59",
+          "version": "repo-lines-v1:sha256:a307394f5c559c265237c01ad491fbdebbab72f17f5dda04e291dccbd667cb92:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3MjAxNTk0NTNkODg0NTE2MDYxNTEzNzliMzhiYWE1OGViMzcyMTRmYmI2MDkwNGU3NjE2OTRkNDZlYjJlNDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA4ZTNjOWVkMmY3YjMzZDk0MmNjNGJlNjc1YWY0N2Y2ZDc4NzU4ZjAzZDgzMjM1YzVkYTQ3ZDY3MTBhNDY4NTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFlNTkwY2ExY2RmOGRlMzJlZWNjNjdhNDVkODkxYTlmNTBjNDZkMjcwMDFjYWI2MGE5MWI4ZDg2MTYyMzIyZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://illustrations.py#L223-L273",
+          "version": "repo-lines-v1:sha256:57caf2957b10ee4b04ed0d2bcd1c14fec507c2a2bae3a6a4376303ac9be2a018:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFkOTFkNTZiOGRmMWMzNDQ5Y2JmOTc3MzQ3MjdlNjZiNmJkY2UwZWIwYWUxYTEwODAxMzNiZDhhOTk0ZjRjYjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk4NmQxOTFmZmNlMTlmMDE3NmViMjJlYzYwMGY4ZmQyMzRjMDk5M2E1NTMwMTc3YmQ2YmJmYjBiMmZiZjBiODUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImJmNzRkNWQzODUyMjAzZGViN2U4Y2QxODUxMzI3OTg3ZTE2M2NiMmE5ZjM1Zjg0ZTA2ZWQ3OGM0MjEyNzc2MjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_a0ff0e36395749a6b2498543babea744",
+      "statement": "The shared illustration service coalesces requests, runs bounded concurrency and limits its in-memory cache to 128 entries and 24MB, serving private same-origin asset URLs.",
+      "evidence": [
+        {
+          "resource": "repo://illustrations.py#L177-L220",
+          "version": "repo-lines-v1:sha256:56b354d42e6a2efa77617c4f7e2ee754e01fb64e60f28ff4ab990d1a749183a8:eyJzZWxlY3RlZExpbmVDb3VudCI6NDQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyNWY2NzU5ODcyM2FjYzM3MmEyZWYyMzM1YmQ1MGZhM2ZkMGY0NzFjYmZmNTZmODQ4MjgzNGZhMGE1ODgwMTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0YzZkZTc4M2QyNzg4OTY1MDA3OTkyZWM5ZTVmZDE2NDhhMWFlNzNjNzE2MTE4MGU0ODZkYzU2NDFmMTNhYjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFjN2M0YjY5MzJiZDdiOWZiOWMzNmUwMDVlNTA4NmI1MzVhMDdjNWIzZjVlYTBkZDk1ZDkzNWI5YmY3ZTBiZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYwZmYxNmUwZTA4NTI5ZjZlYzZjODc4ODhhZWQyNjY2YTllMGQ5ZWVlMWExZjIyNWJlYzAzODliOTU5MTRkMjQifQ"
+        },
+        {
+          "resource": "repo://main.py#L158-L165",
+          "version": "repo-lines-v1:sha256:26d4791c416000e3ce5eefb69e9754e4502f28ef7f089f74967adc26216764cc:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzAwN2IyZDAzODRmNGMwODVlNGExMWRjYjM5YzcyZWQxZTQ0YzEwYmE1NWJlN2EyOGUzMGU1ZWJhOTNkODEyZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGNjNGE3ZDFjYzc5NmFiYTNlNDY3MjMzMjdmNTE3ZTlmODExOTgyZDI1MGYwNzAyOTg2ZTRiNTc2NGFkOTU4OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzQ4MGIzNzU0NjBiZjE1MGI0ZWQ0OWNmOGQxNjRjZTU3Yjk0NmQ4NmFiZWNjN2I3ZWY1ZTUyZTIyMmZkZDJmNyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_f30e10906e4b40239d262f66a63e3190",
+      "statement": "The passive illustration layer is a clipped body-level multiply overlay; the raster renderer uses local white normalization and a seeded multi-pass 4.8-second brush reveal with reduced-motion completion.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/illustration-layer.js",
+          "version": "repo-file-v1:sha256:5b0c34e3a30c84a15d481473bb17ac1c7d8c4402217f214234e8df5398debe2c"
+        },
+        {
+          "resource": "repo://frontend/raster-reveal.js",
+          "version": "repo-file-v1:sha256:785b77979fefb7a64a4528d33dad1925fbbc52aff1cfd35791f9cd079ed20de4"
+        }
+      ]
+    },
+    {
+      "id": "claim_300d7001b7364c9d880a0ff9d5a98cc1",
+      "statement": "Saved illustration benchmarks distinguish tiny-sample provider generation times from client reveal/paint and disclose charged failed attempts; scripts rerun billed provider requests.",
+      "evidence": [
+        {
+          "resource": "repo://docs/illustrations.md",
+          "version": "repo-file-v1:sha256:16c862c013b45a470916b68f07c1698aa84e35ce0cc76ecdfb62c1b93176071c"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.2",
+    "at": "2026-10-20T22:38:50.689Z"
+  }
+}

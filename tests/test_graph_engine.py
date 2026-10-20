@@ -21,7 +21,7 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await self.session.close()
 
-    async def test_slots_arrive_sequentially_and_labels_keep_ids(self):
+    async def test_slots_arrive_sequentially_but_speech_is_not_copied(self):
         await self.session.ingest('We will talk about three topics')
         self.assertEqual(self.session.snapshot()['nodes'], [])
         await asyncio.sleep(.016)
@@ -33,15 +33,49 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(.04)
         nodes = self.session.snapshot()['nodes']
         self.assertEqual([n['id'] for n in nodes], ids)
-        self.assertEqual([n['label'] for n in nodes], ['apples', 'oranges', 'pears'])
+        self.assertEqual([n['label'] for n in nodes], ['Topic 1', 'Topic 2', 'Topic 3'])
         patches = [e for e in self.events if e['type'] == 'graph_patch']
-        self.assertEqual([e['revision'] for e in patches], list(range(1, 7)))
+        self.assertEqual([e['revision'] for e in patches], list(range(1, 4)))
 
-    async def test_explicit_list_and_repeated_replace_do_not_duplicate(self):
+    async def test_list_fragments_wait_for_interpretation_instead_of_becoming_labels(self):
         for _ in range(10):
             await self.session.ingest('topics: apples, oranges, and pears', mode='replace')
         await asyncio.sleep(.04)
-        self.assertEqual([n['label'] for n in self.session.snapshot()['nodes']], ['apples', 'oranges', 'pears'])
+        self.assertEqual(self.session.snapshot()['nodes'], [])
+
+    async def test_interpreter_names_and_revises_existing_concepts_without_jev(self):
+        calls = []
+        async def interpret(text, graph):
+            calls.append(text)
+            label = 'Tea station' if len(calls) == 1 else 'Breakfast station'
+            return {'operations': [{'type': 'update_node', 'node': {
+                'id': 'topic-1', 'label': label, 'kind': 'idea', 'status': 'named'}}]}
+        self.session.classify, self.session.refine = None, interpret
+        await self.session.ingest('One idea: I keep walking back and forth to get all the things for tea.')
+        await asyncio.sleep(.05)
+        self.assertEqual(self.session.nodes['topic-1']['label'], 'Tea station')
+        await self.session.ingest('Actually it would help with making breakfast too.')
+        await asyncio.sleep(.05)
+        self.assertEqual(self.session.nodes['topic-1']['label'], 'Breakfast station')
+        self.assertEqual(len(self.session.nodes), 1)
+
+    async def test_voice_context_separates_visible_pending_and_failed_interpretation(self):
+        await self.session.ingest('one topic')
+        context = self.session.voice_context(0)
+        self.assertEqual(context['canvas']['nodes'], [])
+        self.assertEqual(context['pending_nodes'][0]['id'], 'topic-1')
+        self.assertEqual(context['interpretation_status'], 'pending')
+        await asyncio.sleep(.03)
+        self.session.nodes['topic-1']['illustration'] = {'data': 'large image payload'}
+        await self.session._emit({'type': 'graph_status', 'status': 'unavailable', 'message': 'Cannot interpret yet.'})
+        context = self.session.voice_context(0)
+        self.assertEqual(context['rendered_revision'], 0)
+        self.assertEqual(context['canvas']['revision'], 1)
+        self.assertNotIn('illustration', context['canvas']['nodes'][0])
+        self.assertEqual(context['interpretation_message'], 'Cannot interpret yet.')
+        await self.session.reset()
+        self.assertEqual(self.session.voice_context()['transcript'], '')
+        self.assertEqual(self.session.voice_context()['interpretation_status'], 'idle')
 
     async def test_stale_refinement_is_discarded(self):
         entered, release = asyncio.Event(), asyncio.Event()
@@ -66,15 +100,20 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
             calls.append(text)
             return {'needs_refinement': True}
         async def slow(text, graph):
+            first_call = len(calls) == 1
             entered.set()
             await release.wait()
-            return {'operations': [
-                {'type': 'update_node', 'node': {'id': 'topic-1', 'label': 'old guess'}},
-                {'type': 'add_node', 'node': {'id': 'detail', 'label': 'Prefix meaning'}}]}
+            operations = [{'type': 'add_node', 'node': {'id': 'detail', 'label': 'Prefix meaning'}}]
+            if first_call:
+                operations.insert(0, {'type': 'update_node', 'node': {'id': 'topic-1', 'label': 'old guess'}})
+            return {'operations': operations}
         self.session.classify, self.session.refine = yes, slow
         await self.session.ingest('three topics')
         await entered.wait()
         await self.session.ingest('first apples.')
+        # A newer interpretation owns this label; the old result must not undo it.
+        self.session._enqueue({'type': 'update_node', 'node': {
+            'id': 'topic-1', 'label': 'apples', 'status': 'named'}}, 'meaning')
         release.set()
         for _ in range(5):
             await self.session.ingest('continued speech')

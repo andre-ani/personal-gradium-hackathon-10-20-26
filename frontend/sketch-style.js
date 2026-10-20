@@ -18,18 +18,30 @@ export function paperNodeStyle(node) {
         : !node.parent_id ? 'section' : 'annotation';
   const nodeVariant = Object.hasOwn(paperNodeVariants, explicit) ? explicit : inferred;
   const pending = ['placeholder', 'pending'].includes(node.status);
+  const main = node.kind === 'root' || node.topicRole === 'main';
+  const base = paperNodeVariants[nodeVariant];
   return {
-    ...paperNodeVariants[nodeVariant],
+    ...base,
+    ...(main ? {
+      size: nodeVariant === 'anchor' ? base.size : [base.size[0] + 20, base.size[1] + 16],
+      headingFontSize: base.headingFontSize + (nodeVariant === 'anchor' ? 0 : 3),
+      headingFill: '#123b7d',
+      stroke: '#174a9cc7',
+      lineWidth: 1.35,
+    } : {}),
     nodeVariant,
     sketchIconPaths: node.icon ? sketchIconPaths(node.icon) : [],
     iconSize: 24,
     headingText: node.heading || node.title || node.label || 'Taking shape…',
     bodyText: nodeVariant === 'annotation' ? '' : body,
     headingFontFamily: 'Patrick Hand, sans-serif',
-    bodyFontFamily: 'Figtree, sans-serif',
+    bodyFontFamily: 'Patrick Hand, cursive',
     labelText: '',
     roughness: 0.85,
-    strokeOpacity: 0.9,
+    stroke: 'transparent',
+    strokeOpacity: 0,
+    lineWidth: 0,
+    paperCurl: 0.35,
     lineDash: pending ? [5, 4] : [],
     ...(pending ? { headingFill: '#6f8eb8' } : {}),
   };

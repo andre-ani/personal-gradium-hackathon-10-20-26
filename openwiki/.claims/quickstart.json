@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:d0b387aefccf43358fec0f988984f3a02a81b3aa6922d71b9c124d6fed0d42cc",
+  "pageVersion": "sha256:374dbe57aee7268b276ec8da065d7e61eaa12570f082c1d3c122b70f3ebf255c",
   "claims": [
     {
       "id": "claim_b4ffcf4e3dd44dedbac0eb80969d1f71",
@@ -44,11 +44,11 @@
     },
     {
       "id": "claim_d4b60e166d0f4934b49746e16df44c8a",
-      "statement": "The browser marks the call Listening on WebSocket open, so that label does not prove a successful provider reply.",
+      "statement": "The browser marks a call Listening on WebSocket connection, so that status alone does not prove provider output or an audible reply.",
       "evidence": [
         {
-          "resource": "repo://frontend/app.js#L55-L57",
-          "version": "repo-lines-v1:sha256:3508ba47ce69e0bba81ed7bc1703fe7b0829975e72b0ea5d12ffe5c49a1ef04b:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDcyNTNhYTA3YmZiZDIxZTUwNDNhZjRmZWFiNWE5ODMxNjE3ZTAyM2FiNmQwOTZhMzVmZmYzMmRlMWVkNzljYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTY2MWMzMzdlM2NmNTI2ZWViZGRhNTQ4NDY3YTQyY2ZiNTZjYjVjOTc4NTUzMGUzYWM2MjM4NGU4ZDMxZjJlYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTliNGNmNDdjZGQ2NDg2N2Q4NGI0Y2FhYzAxNjAzMzhmZjQ4ZTQ4M2MwYmUwZDBkYWIyMjMxZGE3YTU0YTIxMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjZhYTNmMzdmYTRhMDEyZWQyYmRhZmY5MGM5YzNlNDVhNWMzMmRhMjJhZDM4YjY5Njk5ZjE5YjY5MGQ4MWNjYSJ9"
+          "resource": "repo://frontend/app.js#L279-L285",
+          "version": "repo-lines-v1:sha256:4cf83b96d70c136fa5573c39e1369aebbc3868c540b611af23028dc1752f89d4:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDBmMTBlMDkyM2E2NDFjMTMzZmFjNDJmZjAzZmM5Mjc2Yjg0ZmZlMDE2ZGRmZTYyYzM2ZGFlYjZkODM1NjdhOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTY1ZDU4OTRhODZmNGRkNTU1YWI4MThlMWE2ZTE3ZGVlMDA4YTZkMjQwMWE0ZGViODBhYjc1YjBiMGJhMTY2NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmZlN2I3MjUzZTAyMjE1ODE2NjI4OTQ3ZTcxMTM4Y2FlMzc4Zjg0MzQ5NmI3NWEyY2RjZDIxZTcyM2VmNjIzMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTRhZWI0NDBiODZlNDUwZTYyZGUyYmM1NmJmZDFiYzBkZjUxNjFiMTA0MjM5OTk4YzBjMGVlMWU0ODY2YmM4ZSJ9"
         }
       ]
     },
@@ -65,10 +65,42 @@
           "version": "repo-lines-v1:sha256:ee86393e1b8ca9a9a5f641eb769989e44fcb4cee66b50c8e9517fe90d50b6817:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjZWUzZTkzZmNjMGQ5NTBlNmViZjJjNTcxMGQ4ZGY1MDMwNjVhNThkM2UwMmQ1OTgzMDIwZTBjZWVlYTdiNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwOTRmY2U1YTdkYzJkYWNmNTllN2M3NTcxM2U2NmFmNDRhOWFhMTEzODAxYTUzN2Q4MDc5Y2JhZDkwNGU0ZmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQwY2MyOTBmOGQxYWFiNjY2MmQyNzc2YzE3MDRhN2Y3ZmRkNzQ0MTA0OWI3YTk0YmEyZDkxMDkyZjUyYjFhMTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdmYmM2MjA2ZmE3NzliNDU2M2M0NjNiYTI4ZTMzYmY4NDFjMmY5NWYyMjRlYTZlYTZiMTY2NjcxYTU3OWUyMmEifQ"
         }
       ]
+    },
+    {
+      "id": "claim_1f883df8a1214b07a304fdae58faa8c1",
+      "statement": "The current live Nano image generator requires the configured OpenRouter connection, while the optional GRAPH_MODEL selects interpretation separately from voice LLM_MODEL.",
+      "evidence": [
+        {
+          "resource": "repo://README.md",
+          "version": "repo-file-v1:sha256:a3d1f0bd8b6ab3bf6ec9241c11c9eca11a4f55c91c5e63ba85e9266bec5c7632"
+        },
+        {
+          "resource": "repo://illustrations.py#L148-L163",
+          "version": "repo-lines-v1:sha256:d2eb27ea16c479a4271bd0184c96c9d3bf4340e9c4420fee00bdf91073e83441:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyMTM5YjZjMzM3ZmIzODE1N2NhY2IxODQ3M2RmMzc1NDBhNWFiZTU2YTE2Mjk0YmNkNzRjMmQ0OTk0NzczYTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImViYWZiNzY4NWY5YjYzYmQ3ZjVhNmMzYzM4NDdiYzQ1ZjUzMjMyZmNmYjQxNzU2NjdjMmViY2IzYTZmMzEyZjgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM4MGE4NjEwMWJmMmYwNThlZWMxODc5OTk3OTkwZDAyYjA3OGVkYzVkMWFmMzY3YmIyOTkxYTNiMzg1OTdkNjgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc1MmNkZjY2ZGZlZWM5YWU2YTBlNjc2NjFhYjc1NGEyZDg1MGU5MzFmMDA1MzQ5MjBhMWRkOThlMWIxNjIwZGEifQ"
+        },
+        {
+          "resource": "repo://providers.py#L37-L49",
+          "version": "repo-lines-v1:sha256:b46ec2cb1e5c91b076ce7df7272ce9ade55d71783095d5d319fd91e7bb4edc4d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhYWY5Njc3MzJmZTJhN2FiNTJjMGIwNDc4ZmQzNjBjOTcwMjllNjJlN2RiNGYxYjUyZGUzMDg3MDUwOTkwZGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwOTRmY2U1YTdkYzJkYWNmNTllN2M3NTcxM2U2NmFmNDRhOWFhMTEzODAxYTUzN2Q4MDc5Y2JhZDkwNGU0ZmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAyMGE0OTBkYzBkN2ZhNzBjY2NkNjU4ODM1ZDU4ZDIwMzZjYThkMmRhYTI3MjY2NTljNTYwMzgyZWI0MzQwZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdmYmM2MjA2ZmE3NzliNDU2M2M0NjNiYTI4ZTMzYmY4NDFjMmY5NWYyMjRlYTZlYTZiMTY2NjcxYTU3OWUyMmEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d0c9de6b80dc4e88a986b3d4229f9283",
+      "statement": "The Claude entrypoint imports AGENTS.md, whose managed OpenWiki block directs readers to the generated repository evidence index and treats source/tests as authoritative.",
+      "evidence": [
+        {
+          "resource": "repo://AGENTS.md",
+          "version": "repo-file-v1:sha256:e196ae5aef70399b7f4cd655c0440c5c589dbecac5863d6178aa1c195d5a4325"
+        },
+        {
+          "resource": "repo://CLAUDE.md",
+          "version": "repo-file-v1:sha256:cd617c809957b5aeb601ce9856109475f6da8ed78835148d17c3097dd4daa848"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.5.2",
-    "at": "2026-10-20T21:42:30.964Z"
+    "at": "2026-10-20T22:38:50.689Z"
   }
 }

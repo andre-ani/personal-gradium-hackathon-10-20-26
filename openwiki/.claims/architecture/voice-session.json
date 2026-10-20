@@ -1,110 +1,122 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:2db4eceac034112f64a1d404b51fb918d59200d4a2fe4c18e0d6941e0d606fc9",
+  "pageVersion": "sha256:67bc537884c6661c425976f70ec89f381dc47810e78949486a8fe656c16c62db",
   "claims": [
     {
       "id": "claim_8581482cb7e0456f8dde357324696212",
-      "statement": "The /ws/chat endpoint delegates voice sessions to Gradbot with on_start and on_tool_call callbacks; graph tools inspect or request refinement of a linked in-memory graph session.",
+      "statement": "The voice endpoint binds a call to an existing graph session and uses the repository voice_session wrapper around Gradbot for config refresh, tools and decoration reactions.",
       "evidence": [
         {
-          "resource": "repo://main.py#L62-L95",
-          "version": "repo-lines-v1:sha256:23844234978cc6009df560b5008bb477073118d1e97da331474e6b9baed3f800:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmMGI5OGE4YTc0NzM3ZDE0ODMwNTU5MmUxMmJiM2ZmMzEzYzIyYzMxZDViNjk4NjJiN2I1NmQ4NjY5YjUwM2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU3ZGQ1MDAzYTQ2YWM4ZTY1MmYxZTQ0NTFiZTZjNTg2ZDA4ZTljNzlmYjFjZDE3NzZjODBmNDEyNDRmYTU3NDYifQ"
+          "resource": "repo://main.py#L97-L155",
+          "version": "repo-lines-v1:sha256:8912824b91f3a5366916c44089b222f2267d99a627b1c2f29a396ab02a152eaa:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhmYTc2NmFhZTgxZjFhZWI3ODM4M2Y2YWM1YWFiZGY1MTk3YTY1ODcxZWFiMDU4ZmM3ZTJkYzg2ZTBlZGI3NDYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk4Y2M5N2MzYWIwZjEyZWY0ZTBkZjExMjNhNzhkOTVhMjU5NTdmNmE5ODQwYzAyZDZhYTY3Mjk4YTM0NDkwZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY3MzhiNmY5M2U1NGVkMzkzZGE5YzgyNTZlZWE4YTZjNDEzZGIyYjMyOWZkZTU4YzliNTg0NmY0MjJhZGE0ZjAifQ"
+        },
+        {
+          "resource": "repo://voice_session.py#L62-L179",
+          "version": "repo-lines-v1:sha256:9f1556c73f01a5f8cde7ef089ab9af9c24b4542b06bbf576f4e0f7cc88f51b0b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTE4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI4ZmM4NjEyNjA1YWIyMDhiMWQyMjQ3ZTQzZTk1YWE4ZDc1Yzc3YjdjYzY0OTliM2E1NzRmNWVjMTkwNDM0ZjdiIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwZjA4NjhkODYyZTU5NmUxZmEwYTBhNTg3OGIwNTBlZWFmYzZlMzRkMGUxNjJiZTM4YzZhZjNiMWNiYWNlOGZjIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlZDUzODY4OTBiMWQ3N2FjMzYyOWY3ODVmNGE4MDQ2NTYwODg4MmM2NzNhNjU1ZGY2YjQ0M2E4ZmI5YjgyOGE1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
         }
       ]
     },
     {
       "id": "claim_b16c10aefa3a43d5a4aec9f0fdc14143",
-      "statement": "The voice prompt asks for brief concept clarifications and the session forces assistant_speaks_first false and silence_timeout_s zero with an English voice fallback.",
+      "statement": "The server fixes Cara's approved English voice and brief grounded teaching-assistant instructions, with assistant_speaks_first false and silence_timeout_s zero.",
       "evidence": [
         {
-          "resource": "repo://main.py#L14-L23",
-          "version": "repo-lines-v1:sha256:4a4958d0f4105998d42adae43c17cc570b6bb2beb9288ff2da7664f40556ae07:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhmMWM1MmM4Y2JhZTdkZDJhOGNlZTI4Y2Y0YjkzNTUzZTkyMjYzMjNlYWNhMGFkODBlMjY3MGUyOTc4M2VjZTMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzMDNlY2RkNGE0ZDEwZjE5YzczZmQ0MmZkMTI0MzdmZDMzNTRhODI2ODE2MDVkYTUyNTVhOTdhMzkwNjhkYmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkMmM3ZDI5OWQzOTk5NDNkNmNiNGQ1YmJkMTRhZjI0YWZmNDBkZjg0ZGRlZmU5OWY0NTNmY2RjZjU5YWNhMmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM3YTYyZmQ3NDk2ZDBhMGU2OTM5N2M2YjIwZTY3NGM0YWI4MWIzYzZlNDE5MjJhOTkwZThiNmZhNzljNjU2NDcifQ"
-        },
-        {
-          "resource": "repo://main.py#L49-L59",
-          "version": "repo-lines-v1:sha256:ea53bb01a2d8da08508f6a532938895d4117bad83aa899b8075859a62fa60069:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyMDdiMGRjYWIxOWY3ODUwMDBhMTY2OTJkMzY3MmM1ZDhiN2E0YTNmMjI3ZDhkYTRkODFhZmRhY2FmODgwMDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzZDE3MWRlNzU0MzFhMDIxYTBkOTRmYTc2ZmFiZjBkNzEzOWM4OThjMWEwYjQ0YjQzY2E2MDkwM2ZhMWI4NDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk4Y2M5N2MzYWIwZjEyZWY0ZTBkZjExMjNhNzhkOTVhMjU5NTdmNmE5ODQwYzAyZDZhYTY3Mjk4YTM0NDkwZTMifQ"
+          "resource": "repo://main.py#L15-L94",
+          "version": "repo-lines-v1:sha256:d2b9451f0b5ae1bfa9b0f782853dc607a6bc94f5076881d24992be714b1c47d8:eyJzZWxlY3RlZExpbmVDb3VudCI6ODAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1M2RhYWVjYmU4NWNhNDE2NjA2ZGQ3MTRhYTkxMmNiMDU0MDI1YjJhY2RmZTc0OTg1YzFkZTZlMTlmM2MwZDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImExYmIyOGIxYTgwNWEyMGM5NTIzYzMyNzZmNDU1ODZhMjBhMmVmZWViMzAzN2E0ZWYzZDEwNzRiYTBhYjU1MTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIxYjk4ZDhlM2M0YWNmM2Q5YjQ5ZTRhOTJlYWVlYjUxYWU3YmE2ODUyMzEzZTA3MmZhYjJkZTVlMzM5ZGZlNzcifQ"
         }
       ]
     },
     {
       "id": "claim_e8cfd2595e4c45a8b02c5bff408acabd",
-      "statement": "The browser starts the audio player before opening the voice socket, sends voice settings and graph session ID, and forwards user transcription fragments to the graph socket.",
+      "statement": "The browser initializes the audio player before opening the voice socket, sends the graph session ID, and forwards only user transcript fragments into graph ingestion.",
       "evidence": [
         {
-          "resource": "repo://frontend/app.js#L49-L57",
-          "version": "repo-lines-v1:sha256:7bcbd92f26352978ce933149497e9b490917ae8fe1dc8051f0f4eae5f6c1166d:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDU3ZTc3OWVhYjRlYTE1YzFmZjkwNGE3YjMyMzAyMTc4OTZlNWYzYjM0OTc5Mzg5N2M0MDU3Y2M0ZjlmNTdlYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTY2MWMzMzdlM2NmNTI2ZWViZGRhNTQ4NDY3YTQyY2ZiNTZjYjVjOTc4NTUzMGUzYWM2MjM4NGU4ZDMxZjJlYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmMxMDE2ZDY2ZThkNTY0OGZmZjMyYWRiM2U1YjgzMzgwNDc5ZDdjOWFkYjVhOTMyOWNlMjBkMjAzM2ZjMDA4NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjZhYTNmMzdmYTRhMDEyZWQyYmRhZmY5MGM5YzNlNDVhNWMzMmRhMjJhZDM4YjY5Njk5ZjE5YjY5MGQ4MWNjYSJ9"
+          "resource": "repo://frontend/app.js#L280-L285",
+          "version": "repo-lines-v1:sha256:4d038bd8fa4578b9a97db9f7ce5c40bad14fc839349c935c3b2ea8a1939db887:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTkzMjUyZWYzOTQzNDhmMjM2YWYwYjNiNDUwMDdkNTg5M2QxYWY3ZjI3ZTY2ODlhNDRlYjNkY2MyYTQ5MzkxYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTY1ZDU4OTRhODZmNGRkNTU1YWI4MThlMWE2ZTE3ZGVlMDA4YTZkMjQwMWE0ZGViODBhYjc1YjBiMGJhMTY2NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmI4NzA3NWIwZDE5YmNjOTMxMGFmMGM4ODc5ZGQ2MTExY2RhMThlYjkxNDc3OGM0NDU2YWMyZjYxMzA1YjlhMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTRhZWI0NDBiODZlNDUwZTYyZGUyYmM1NmJmZDFiYzBkZjUxNjFiMTA0MjM5OTk4YzBjMGVlMWU0ODY2YmM4ZSJ9"
         }
       ]
     },
     {
       "id": "claim_80deb794a49d4017ba0eb70a25a36a51",
-      "statement": "Voice stop and socket failure/close share a cleanup path which stops the player and closes the voice socket.",
+      "statement": "Voice stop and socket failure/close share cleanup that stops the player and closes transport, while async startup verifies the original graph session still exists.",
       "evidence": [
         {
-          "resource": "repo://frontend/app.js#L56-L57",
-          "version": "repo-lines-v1:sha256:b331ffa8e512d2859903363338d2b7943f6ea64cf4d6d9ea6b47f30267781b91:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWMzYjMwMzg0ZTM4MWQxOWEyYTM0OTg3MjliOTRkMjAyYWU0MWVjNzQ3NzQxOWYxYTY3OTI2NDhiODEwYzIzNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTY2MWMzMzdlM2NmNTI2ZWViZGRhNTQ4NDY3YTQyY2ZiNTZjYjVjOTc4NTUzMGUzYWM2MjM4NGU4ZDMxZjJlYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTljYWExNjBmM2RiNjI3NWU0MmQyZmQyMDM3OTcxNWE0Y2Q3N2NlNDk5ZGU5NzU2ZDYyM2QxMzAwMTNjYzY3YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjZhYTNmMzdmYTRhMDEyZWQyYmRhZmY5MGM5YzNlNDVhNWMzMmRhMjJhZDM4YjY5Njk5ZjE5YjY5MGQ4MWNjYSJ9"
+          "resource": "repo://frontend/app.js#L280-L286",
+          "version": "repo-lines-v1:sha256:a331513860ed505fb8974e994c8d7e0debae1cac70d2354be316fad05527bb1a:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTkzMjUyZWYzOTQzNDhmMjM2YWYwYjNiNDUwMDdkNTg5M2QxYWY3ZjI3ZTY2ODlhNDRlYjNkY2MyYTQ5MzkxYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmRmMGYzNDMxMGI4OTZiM2RkMDkzN2IxMTlmOGVlYjBhNWRmZDIyOThlNjU1N2M3YmQxZmViNzI1MzIyOWExNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmI4NzA3NWIwZDE5YmNjOTMxMGFmMGM4ODc5ZGQ2MTExY2RhMThlYjkxNDc3OGM0NDU2YWMyZjYxMzA1YjlhMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzc4ZjJjYzFhYzIyYWMzZTQyNmFiYjU3MWU3YzJhNGY2MWJmNWU1YjIwNDhlNzk5NjBmNmFhMGUzMWJkZDNiYiJ9"
+        },
+        {
+          "resource": "repo://voice_session.py#L169-L179",
+          "version": "repo-lines-v1:sha256:ae195026f970ecd74b6038aee7e3cfcdaa03d6966935bee6a85e32aaf64de8ed:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmMDg2OGQ4NjJlNTk2ZTFmYTBhMGE1ODc4YjA1MGVlYWZjNmUzNGQwZTE2MmJlMzhjNmFmM2IxY2JhY2U4ZmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmMDg2OGQ4NjJlNTk2ZTFmYTBhMGE1ODc4YjA1MGVlYWZjNmUzNGQwZTE2MmJlMzhjNmFmM2IxY2JhY2U4ZmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQwMjhjMzMyNWVlNTA2ZGRiMGVkNzY5MTVjZTVkMjUwNmQxNDBhYWJlNTNlYTQ1NTkyNDYxYTM2Y2Y0Y2FiNjIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
     {
       "id": "claim_12d7089dda2343e5ac6508cd94cea177",
-      "statement": "Gradbot configuration loads at import and is shared between the voice bridge and route setup, which enables voice selection.",
+      "statement": "Gradbot configuration loads at import and is shared with voice and route setup; the application uses a fixed server voice and disables voice-catalog selection.",
       "evidence": [
         {
-          "resource": "repo://main.py#L151-L153",
-          "version": "repo-lines-v1:sha256:a6a8f2d0d16c3376380bd539d1a4dc1c3a11366eed7c8c468820fd05e20e7c7a:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjgzOGQ5MjU1NWNmYTRjYTUwYjAxYmMxYzNmMDA2MzA5Yjk1ODhkNTEwMmQyMmY2YTA3NDcwMDQxNDQ0NTBkZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGU2MzQ5MjAyMzRmM2EzZTI0YmIzYTlmYzI1OTM5NTcxOTYxYTIwNTkwZmE2NDY1ZTFmMGJiZTQxNmYwYmYxYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+          "resource": "repo://main.py#L224-L226",
+          "version": "repo-lines-v1:sha256:14a2141bffd6461a0ec3072dd313fed0b4db61558261bcc364dd06b472c84cdb:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjgzOGQ5MjU1NWNmYTRjYTUwYjAxYmMxYzNmMDA2MzA5Yjk1ODhkNTEwMmQyMmY2YTA3NDcwMDQxNDQ0NTBkZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmFmYmEwNTI3YzM5NTNjNGI2ZTBlNWI1NzM5YmE4MzYxMmY4MDUzYmNkYzk0NjY3MzAxOTNjZDFkNTkwYjQwOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGU2MzQ5MjAyMzRmM2EzZTI0YmIzYTlmYzI1OTM5NTcxOTYxYTIwNTkwZmE2NDY1ZTFmMGJiZTQxNmYwYmYxYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         },
         {
-          "resource": "repo://main.py#L25-L28",
-          "version": "repo-lines-v1:sha256:6e5ade17c3f3f39ad3d4fed2f10d723dbc7bd2d0e6365dee4d63bc05db0e56d8:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTEwOWE1MjE5OTZmMDVhNDM5NTNhNWE3YjQ4MjFjODk0MDBhYWE3NGFmY2I4YTczNjlmMTc4ZWU3OWFkYzgzNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGQ0OGIzZTY0NjY2NGNkYzIxZjJlYTgzM2IzM2E0NTAxOGI5MDNhNDY0YTA0N2ViMGIzOTkxYzFlMjNkYWU2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWMxNGViMjNhMTY2OWM1YTBjMzZmYTJmNmMxMmU4MjUwMDRiNDAxMmU3M2E5ZjhkMTFlOGM5NzQwYmIwODA2ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmUxY2ZlMTViOWZiOGM0MzA4NDMyYmY2NTA1MDRkYjhjOTQ4ZTI4ZTE3ZmEyM2NhYmFmZjRiNDhmMWM3MTJmMiJ9"
+          "resource": "repo://main.py#L56-L61",
+          "version": "repo-lines-v1:sha256:eccd45c7dc20d5293d0a74528cbb983a932420f4f221c0875f5e78e41796e364:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTc1MDhlYzYyMTUzNmRlNjI1YmQ4ZTlmNjA2ODZhOTY1YzEwNGY3ZGZjNDVkOWE0NmVhZGRhYjYwNTBhNzkzOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjg3YWEzMmNmMjk2NTY4Y2ExNDBlZjk2ZTc5YmI4ZWIyNjcwNWFhZjc5MzVhZTAxNmE2YTM4MmJkOTM1NWFlMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmUxY2ZlMTViOWZiOGM0MzA4NDMyYmY2NTA1MDRkYjhjOTQ4ZTI4ZTE3ZmEyM2NhYmFmZjRiNDhmMWM3MTJmMiJ9"
         },
         {
-          "resource": "repo://main.py#L93-L95",
-          "version": "repo-lines-v1:sha256:188938ed52bfc717e68b1b6e2f338017ad9ad54b752b259da769b24fc802b3ef:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODk5ZGJkODAyNTQwNGU5NWJhNmFhNGY2MzhmZTJjYjEzY2I2ODFlNWQ5YTk0NzdhM2U1YjQzMWI2NzQ4ODNkMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzBjMWYxODhmMTQyZWQ3YTgyNDY4MGIyMDcxNzJjNTUxOWJjNjE0YTQ4ZmRhN2NmMTY3ZWRiOGRkZjc5OTU2YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTNjNWQzOTljNmJkM2ZhN2M2ZDI3ZmZjNTc4NWEzNGUzOGRlMDA3MmQyMzA1MDJhNjc5YzU1OGRhYTI3ZWJjYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTdkZDUwMDNhNDZhYzhlNjUyZjFlNDQ1MWJlNmM1ODZkMDhlOWM3OWZiMWNkMTc3NmM4MGY0MTI0NGZhNTc0NiJ9"
+          "resource": "repo://main.py#L82-L94",
+          "version": "repo-lines-v1:sha256:409d544dee0deec17d788eed81f32948ec79ce423fc1d9c05b3cde676832b615:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI2N2I1MTYxNzY2YjE0ODkwMWUwYmZiZTYxYmZmYmM0Y2JhNTkxODU0YzkwZjA4YzBjNmNlN2Y1ZjcwMDZlZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQzZDE3MWRlNzU0MzFhMDIxYTBkOTRmYTc2ZmFiZjBkNzEzOWM4OThjMWEwYjQ0YjQzY2E2MDkwM2ZhMWI4NDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjIxYjk4ZDhlM2M0YWNmM2Q5YjQ5ZTRhOTJlYWVlYjUxYWU3YmE2ODUyMzEzZTA3MmZhYjJkZTVlMzM5ZGZlNzcifQ"
         }
       ]
     },
     {
       "id": "claim_d2264042a9c0448a87a84757d9bca159",
-      "statement": "Explicit text structure queues stable topic slots independently of semantic provider work, and one graph patch is emitted per heartbeat.",
+      "statement": "Explicit counts reserve blank topic slots independently of semantic naming, and the heartbeat emits one queued graph operation per tick.",
       "evidence": [
         {
-          "resource": "repo://graph_engine.py#L130-L143",
-          "version": "repo-lines-v1:sha256:d923f99af9ba7b257da6554645739fd80e6c9a5348e5e5f303e405da2e616ee1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjliNTU4ZmU4ODQ3YWNhZWVjNGZlNGY5MmQ3OGY0YjM0YjJmNWZlZWZkNDFiNjRmNjQ0ZTI2NDdiMmUxNjlmZmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1YTg0MzhhNzU4NTZjZjU1OGIxNjE1OWNmYjY0ZjkwMjk0ZmU5MGM0NDc4NzI0MWYwZTZjYmUxMjk2ZWJlMmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQyMDZmM2JlODRkYjIyYjc1OTkwNTdiZTRlNWNmMzA0M2JkYTc2NTJjMWYxNzA5YTFjOWUwMTE3ZDEzMWYwMmIifQ"
+          "resource": "repo://graph_engine.py#L130-L163",
+          "version": "repo-lines-v1:sha256:b41823f098bce5ad8f617f94e57e89eba1c25bb3b36ef206646727cbfc29af2f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyZWY1NTA4YzE5YzRjNjI3YWI0YzFkYTJkMzQyZmFjMjM1N2M4MjA5N2NkZTJkMjFiYWQwMTIxNDFkODY2OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3MTEyNWY0YTFlZmJmMTZlODI5NDY4MmUzNDY1Mzc5ZTY1MDgxMjUxNzIzY2IyZTNlMjE1MWEwMWNiODk1MGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYwYWUxN2I2MDliMzMxODNhNWZkNGJiZDliYjQ3NzUyMTE1MzUwZTg5OTY1ZGVkOGRkNTBiYjVmM2VjYTA0ZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUyNDUwNzNiM2NhOTljYzNkN2RkYWMwMzM3M2I1ZWU4ZjZkNmYwODU1ZjJkZTIyNjgyNDMyZjRhYjAyMDIxOGEifQ"
         },
         {
-          "resource": "repo://graph_engine.py#L43-L80",
-          "version": "repo-lines-v1:sha256:d00834ddb47bf644475b64d9a528fbecb233aa7f6904a2f6502f087a94503180:eyJzZWxlY3RlZExpbmVDb3VudCI6MzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjJkNjA4NmI5MDUwNjNiYmY2YjdlYzcxOTRlOGQ3NThkMWY5MzFmMTRmZDVhYzdmMDhhYmU4OGM2ZjEyNmI0M2EiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2ZmIxNjZmZjE2MDIzMjQzNmMwNjJiOTRmYjI3OWM3MTE3YmMyMjk0MmVkMjMyYWQ4M2RhNmUyOTg4MWMxYzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU0ODEzMjUwZDhlMmQzZTYzMGUzZmMwZTZlMGI3YmNjMzlkMjI4MWI2MmNjYzFiY2Q2NTQ1Mzk2MTYxODk5ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI5Yjc1NGZlNTIyYjlmMjI5YmZhZTlmZWM0ZjRmMTQ1OGVkMzk5MDQxMzFiZWM5NDQyYjk3NTBhNjc1NDYyYzMifQ"
+          "resource": "repo://graph_engine.py#L206-L229",
+          "version": "repo-lines-v1:sha256:652d7168b10b13b848ac1f943378fca3e59075bb426c2b4e8698bc0f3cce8822:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhiZWQ4Zjc2NDNhMzNjZWNiOWQ4MTM4YjczMWRmMzk0MDBkNmYzNGU4ZjhhNDk4NTM5YmU5OWY0OGMxNWM5MDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUyOTIzYzdkMGQ1YjlhNjg3ZmFhOTRiZGRkNWJhNDIzMjk5MjFmZWQwYTJjZWE1YThmMWI0MzBkNDdlZDFkOWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRjMDIxNGI1OTI4MmU0YjdjNDNkNDE1NWMxY2Y4MGNkYTU3ZjI0OTI2N2M2ZDhhYjk1MGJmNWUzN2IxZTU3YWEifQ"
         }
       ]
     },
     {
       "id": "claim_dd37cfe32f5c4b168106bf01f593ef41",
-      "statement": "Deferred semantic processing uses epoch invalidation for reset/replacement and protects changed deterministic node labels while allowing safe results during continued append.",
+      "statement": "Deferred interpretation uses reset/replacement epochs and basis comparisons to reject stale work while allowing safe prefix results during continued speech.",
       "evidence": [
         {
-          "resource": "repo://graph_engine.py#L145-L237",
-          "version": "repo-lines-v1:sha256:46e7c30f8ecda3c71a19f88b83f87d0edbcb8b531ccdb46e042b8136d6129a0b:eyJzZWxlY3RlZExpbmVDb3VudCI6OTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwMWNlYjU4ZDcxOTM1OTBkNzU1MjVmOWQwZDI3ZWQ0OTJmYjU3YjBkZDFkYjU3ZTM4NzY1MTI2OGEyM2VkZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMyMmZhNDg3N2RjMTE0Zjg5MzI2NmQ5OTg4NjMyMmMwNGMzMWY3MzFlZDU5ZTIwNTZhOTI3MGViNzgxZDNhOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBlMjc4Y2Y4OGZiZTViMGFhMjM1YmIwYzQ1OTFlMzNjYjBkNTcyNWRlYjc4ZWM2Mjk4NTFjZWYzYzE4NDUwNWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU1MzdiYmI1MGNkNTdkZTYyMDIwNjg3NTViOWI0ZjU0MGY1NTJhYmI2NGE3ZjYzMzFlMWU2NjRlNzFiYzA1MGQifQ"
+          "resource": "repo://graph_engine.py#L230-L316",
+          "version": "repo-lines-v1:sha256:8a433b5d0fbbc78785e9cc8ab819caeb6348fd0786d4239fc6573ed2cba0fc64:eyJzZWxlY3RlZExpbmVDb3VudCI6ODcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwMWNlYjU4ZDcxOTM1OTBkNzU1MjVmOWQwZDI3ZWQ0OTJmYjU3YjBkZDFkYjU3ZTM4NzY1MTI2OGEyM2VkZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1ZDI2Mzk1YjhhMjA0OTNmZTg1ZjZhZTNhNWY0OTBjMzVjOWNiMzEzNWQ1YjVlNDMxZGMyNzM1N2ExYTY0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlYTBhOTA4NTFhMmJlNGM4NmM0MzlmYTJmYmM0MDRiYjJlNmU0Y2ZiZDRiZDQ0MzM4NDU1NWZiYjBhYmRkMGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjViYjA5ZDM2MzIzOTgzYWUyZGQ5OGUyYmExY2JmODUyYmJiYjZlYjFhNmU3NzI0Y2YzYWI2NDg0NmY4NWQyZDEifQ"
+        },
+        {
+          "resource": "repo://graph_engine.py#L327-L352",
+          "version": "repo-lines-v1:sha256:94db729646c624d49020463ff8d8ffd052c9cd2205601e0bdccaef1c60b65f1f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiOTQ3NGY0M2ZhYzFmYzQxMGZiMTIwNWExMTM0OGUxMTJmNDRkNGNiZmExNjNjM2Q2NGFkOWM4NmFiYWI0MjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmMTNkNjgwODAzOTU5M2UyMDhhODc0MjM5ZGIyZjQ1MTgxNzI4ZDZjZTg1MTJkZjE4OTc2MjQ3OGM3NTFmOTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNjMjQ3ZGUzNjI2MjZhOWVmYTc3M2I1NTcwNDNjOGYzM2M4YjRlMTc5YTc1OWE3ZGU4MWIwYTA2N2QwZjEyMTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
     {
       "id": "claim_603b642d62884918981c399e44eeb7d5",
-      "statement": "Jev classification and validated graph refinement are separate bounded provider calls, and fragmented HTTP JSON is accumulated through EOF under a response size cap.",
+      "statement": "Optional Jev decisions and validated structured refinement remain separate provider adapters, with bounded complete HTTP JSON reading; the live graph does not require the classifier.",
       "evidence": [
         {
-          "resource": "repo://providers.py#L137-L206",
-          "version": "repo-lines-v1:sha256:f313efc1adabe581c28b46657aa6bd514510dfca059dad3c6caea99fa2da091c:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhMDcxYWE3MGEwZTdmY2UzOTllZWNkMTQ2MjE0ZDViMDMzYTYzNDcwMWMyYTZiYmYzMDcyOTU2NDE2ZDM4MzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRlNGJiM2YyNjY5MjFlZjc5YzIwNzE1ZTVlOGM1OTg3Y2ZmMWQ2ZTBiMzdlZTI3YWExOTQ2MDhhOTlkNGUzNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYwNGU3ZWVmZGZlYjM1ZmQ3YzBmNDU3ZjZiNGY4ODVkNmRlZWIxOTBhMzIzZDgzY2ZmNTlkN2ZiNGNlMzMzZDAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://graph_engine.py#L282-L306",
+          "version": "repo-lines-v1:sha256:4f3d841990806bf12df6508099c81fa89201318b4f8ccd43dfcda424c7db974c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYxMjM4NDZiN2NlZjY0MzNlZWFlODUwNWU2NDA0YWVmYWFkMmExYmY3YmZiNjE0N2VhNGFjNTNjZDkxOGJlMTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkYThmODc1NGEyMDRjMGU4M2ZjYzIxMWE4NWQ3YzRjYjNmM2I2YzA2ZDBmMWYzYmQxMjAwZDliZTk4ODFhZWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwOGFmMThlZGZhOWFiZmY0Mjc4MTU1MGFhZDk2ZjYzYjVhNWM2ZjUzMDg0M2E0MzE3M2Y3NWEzODViOTYwZWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk4ZWVmODA0ZjgyYjE1NjA4ZTdhYjJhOWMyOWFhMGM2YTUzMzY4ODEyMDMzOWQ2NDI1YWU0ZWJlYjUxNzY0NTEifQ"
         },
         {
-          "resource": "repo://providers.py#L77-L131",
-          "version": "repo-lines-v1:sha256:665951960c2b05464e36af60bc464a4ca25dc843deda511be68159aac13a5fb8:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0Yjg2YWJjM2UyMDBmNjRjY2QyN2U5MmFjOWNmY2YxZTYxYTQ0ODQyMDg0YTFlNGM2ODIyYjIxYjY3ZGRkNGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjNzlkNzYzZTRjNzUzMDdlZmU4ZTM2YjJkNTQyYjVjNTJkYWJmNDkzY2JkNmE4ZGM0YjA1YTUxOTcwM2UwM2MiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQxMDFmZThjNWZlNzM0YTQ4YzI4MGRiMTEyZjUxM2EzYjQ1NjU2OTZkMWY3ZWU4OTU1OGIyNzVhYzlkMjE1MDYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYzODQxYjNjMzA5YTU3YzE0MjQyOWNjZTc4YTJiMzZkMjQ3MjU2OWM2YWFhZDhlY2Y1ZWFjMWI0NzdhMmUxZDgifQ"
+          "resource": "repo://providers.py#L134-L238",
+          "version": "repo-lines-v1:sha256:fce58ce8f98a5daffbd2436ba3430bf13b3ca2e860c97281c5bcde879212dad2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI4ZmUwMTRkMjZkYzllYjMyNWRkNDJjNTdhZDY0MGMwMTFhZmI5OGRkNzRkNTliNmI0YjkyNjQxYzY1ZWEwOGQyIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0ZTRiYjNmMjY2OTIxZWY3OWMyMDcxNWU1ZThjNTk4N2NmZjFkNmUwYjM3ZWUyN2FhMTk0NjA4YTk5ZDRlMzcyIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlNWM0NTZjMWRiNGE2NGI1OTk2NDkzMjRkM2MzYjYxNDMxNWI3YWZjMGQ3Yzg4OTI3MGNmOWI4N2FiNDYwMTBkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        },
+        {
+          "resource": "repo://providers.py#L77-L135",
+          "version": "repo-lines-v1:sha256:5e5ebdac1ff89e46d17d2034df0d544e55b79ab0d5ea31cedd69fe49488c4904:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5NGNjOTNmYzYxYThkYjdjMTUzNzk5NmE4YmFmM2M2NzljOTRkYmRkOGQzYTU3MTRmODc5MGM0YzhlN2U5NDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyZWQ5NTg1Y2VkNzQwYTE0MzM3OTFkMTE1ZDA1ZTlkY2Q3MDYyMDVjMjM0YTAyOGM4YzYxZDQ2NGVjMjg5OTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjFlZDdjNDYxOTgzNWI1MjVlNTZmYzg0YWY3YzI4MDU3MDcxMmFmNzhiMGVjOTVmNGUxMTZjMDY2ZDk2MzU4NDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFiNDFmNWI0YmE0M2VlZjViYjM5ZjQxZTZjYTgzMjI5MGEyYjg4Y2NiYTgyOTljNGRiYmM1OWIxNTUyODNhYWUifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.5.2",
-    "at": "2026-10-20T21:42:30.964Z"
+    "at": "2026-10-20T22:38:50.689Z"
   }
 }

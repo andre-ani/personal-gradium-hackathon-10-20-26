@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:6f4bed579fb6101811173e7abce486e366cb86045645d72f98507af35e19c6d4",
+  "claims": [
+    {
+      "id": "claim_0ff93cb32e0e4f138047dbf2cb2b1df8",
+      "statement": "Graph ingestion reserves explicit count slots immediately while semantic interpretation names concepts; the live semantic path does not require Jev unless a classifier is injected.",
+      "evidence": [
+        {
+          "resource": "repo://graph_engine.py#L130-L163",
+          "version": "repo-lines-v1:sha256:b41823f098bce5ad8f617f94e57e89eba1c25bb3b36ef206646727cbfc29af2f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyZWY1NTA4YzE5YzRjNjI3YWI0YzFkYTJkMzQyZmFjMjM1N2M4MjA5N2NkZTJkMjFiYWQwMTIxNDFkODY2OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3MTEyNWY0YTFlZmJmMTZlODI5NDY4MmUzNDY1Mzc5ZTY1MDgxMjUxNzIzY2IyZTNlMjE1MWEwMWNiODk1MGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYwYWUxN2I2MDliMzMxODNhNWZkNGJiZDliYjQ3NzUyMTE1MzUwZTg5OTY1ZGVkOGRkNTBiYjVmM2VjYTA0ZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUyNDUwNzNiM2NhOTljYzNkN2RkYWMwMzM3M2I1ZWU4ZjZkNmYwODU1ZjJkZTIyNjgyNDMyZjRhYjAyMDIxOGEifQ"
+        },
+        {
+          "resource": "repo://graph_engine.py#L267-L316",
+          "version": "repo-lines-v1:sha256:d004ed3c3b7f3aeff469a1fca961fe79ffdaa69a261854b8d46796d94f8a6faa:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmMDJjOGM3Mjk5OWUzNWEzZWY2ZTRkZTg2ZjZhOWZmM2M5NjE1MDhiMWI4MmM4M2Q1YzQ5ZTJiN2ExMGU5ZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1ZDI2Mzk1YjhhMjA0OTNmZTg1ZjZhZTNhNWY0OTBjMzVjOWNiMzEzNWQ1YjVlNDMxZGMyNzM1N2ExYTY0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE0NGE0YWY1ZGIyZjBkOWY1OTkyMmFjYjliYzdkYWI0MTNmN2JjMGQ3OTIwNmRkOGM5Y2MwMTc4MjRmM2JkZWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjViYjA5ZDM2MzIzOTgzYWUyZGQ5OGUyYmExY2JmODUyYmJiYjZlYjFhNmU3NzI0Y2YzYWI2NDg0NmY4NWQyZDEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_77f36543442e4624916be6ef98ee527f",
+      "statement": "A 300ms default heartbeat emits sequential revisioned graph patches, distinguishing desired state from emitted state and tracking affected node revisions.",
+      "evidence": [
+        {
+          "resource": "repo://graph_engine.py#L14-L41",
+          "version": "repo-lines-v1:sha256:4da0f0150be0c81b2250b1dc09a16e73039f7c40abcd32624f316f4859b02267:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwMDlmNGZmYjVlNmZiY2JhMzRhMDRhYmI2NTkxNjc0MTI2NzIxNDhlMTM5NTc0NGUzZTc2MDNlYWY5ZGRiY2QiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0Y2Q0ZmEzNjFhOWEyMTI2MzA4NjI2MjMwZGRlZmZkZDMyNWRhN2M1MjdiZmFhMjIzYjU1ZjRlYzA0ZWY2ZWMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1OWYyOGMzYWE0MTM0MWJlNzY1OTM4NmE5NGNmNjJkMDkyZWJmZTM0ZmNkNzkxOTE2NGRlY2NiMTU4MzdkM2QiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImIwOTU1YWMxNTkyZWIyMDRhNjFmNDk3MTZhMjc2NmUwZTgxNjlhYmQ2YzYzY2JlMWNhYWExY2EyYTNlYjk0NDQifQ"
+        },
+        {
+          "resource": "repo://graph_engine.py#L165-L229",
+          "version": "repo-lines-v1:sha256:13e1ce4fe660de9a0ccb8d788d27e95e13b6890d7ee32988cdea871ce953f767:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJmYWFiYjkzMGZhMGJjNThkYjQyODZhM2ZlZGFlNjYzODY2OGNmZjFmMGMwNjU3NmM0MjY5ZjZiMmU4NTAzMjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE0Y2RjZjAxZDU2ZGJiZTdjMDk2YTk4OTllMzNkOTIwZTBlMTQ3MDAzMDMzMTY2ZWIwMDBlNjRkYjc3NjMxYWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjRjMDIxNGI1OTI4MmU0YjdjNDNkNDE1NWMxY2Y4MGNkYTU3ZjI0OTI2N2M2ZDhhYjk1MGJmNWUzN2IxZTU3YWEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b0513b5b3b974df88d9dd1d311865c4d",
+      "statement": "Reset/replacement epochs and basis comparisons reject stale interpretation work while allowing safe prefix results during continued speech.",
+      "evidence": [
+        {
+          "resource": "repo://graph_engine.py#L130-L141",
+          "version": "repo-lines-v1:sha256:8b75cd790e62491d6d17699e0e547cb36b6e1732344701464c61f9d0fbef9588:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAyZWY1NTA4YzE5YzRjNjI3YWI0YzFkYTJkMzQyZmFjMjM1N2M4MjA5N2NkZTJkMjFiYWQwMTIxNDFkODY2OGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3ZWI0OWZlZWQ2MzFiZGRmMTk1OTVmYjg2OThhNzMxZjI5ODBjNGJhMjRkYzQ1N2EyYTA0M2ZiMzYwNGQ4NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYwYWUxN2I2MDliMzMxODNhNWZkNGJiZDliYjQ3NzUyMTE1MzUwZTg5OTY1ZGVkOGRkNTBiYjVmM2VjYTA0ZTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlMTNjNzUzMTEyZmJjNzA0NTQ2ODFiOGM5NTg0YzU2NmZkOTZlZTU2MmRjZDQwZTVhZDkwNmYyNWY5ZDc5ZWQifQ"
+        },
+        {
+          "resource": "repo://graph_engine.py#L230-L316",
+          "version": "repo-lines-v1:sha256:8a433b5d0fbbc78785e9cc8ab819caeb6348fd0786d4239fc6573ed2cba0fc64:eyJzZWxlY3RlZExpbmVDb3VudCI6ODcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwMWNlYjU4ZDcxOTM1OTBkNzU1MjVmOWQwZDI3ZWQ0OTJmYjU3YjBkZDFkYjU3ZTM4NzY1MTI2OGEyM2VkZmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI1ZDI2Mzk1YjhhMjA0OTNmZTg1ZjZhZTNhNWY0OTBjMzVjOWNiMzEzNWQ1YjVlNDMxZGMyNzM1N2ExYTY0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjNlYTBhOTA4NTFhMmJlNGM4NmM0MzlmYTJmYmM0MDRiYjJlNmU0Y2ZiZDRiZDQ0MzM4NDU1NWZiYjBhYmRkMGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjViYjA5ZDM2MzIzOTgzYWUyZGQ5OGUyYmExY2JmODUyYmJiYjZlYjFhNmU3NzI0Y2YzYWI2NDg0NmY4NWQyZDEifQ"
+        },
+        {
+          "resource": "repo://graph_engine.py#L327-L352",
+          "version": "repo-lines-v1:sha256:94db729646c624d49020463ff8d8ffd052c9cd2205601e0bdccaef1c60b65f1f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNiOTQ3NGY0M2ZhYzFmYzQxMGZiMTIwNWExMTM0OGUxMTJmNDRkNGNiZmExNjNjM2Q2NGFkOWM4NmFiYWI0MjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmMTNkNjgwODAzOTU5M2UyMDhhODc0MjM5ZGIyZjQ1MTgxNzI4ZDZjZTg1MTJkZjE4OTc2MjQ3OGM3NTFmOTIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNjMjQ3ZGUzNjI2MjZhOWVmYTc3M2I1NTcwNDNjOGYzM2M4YjRlMTc5YTc1OWE3ZGU4MWIwYTA2N2QwZjEyMTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0d5f3b319d69470fa40a69bcbfe544c2",
+      "statement": "Decoration receipts require current node/render revisions and sequential levels; one-time reactions are restricted by idle state and cooldown.",
+      "evidence": [
+        {
+          "resource": "repo://graph_engine.py#L60-L121",
+          "version": "repo-lines-v1:sha256:13642d18d237f0b43c8de3612adf67a2330bc17e077cc37ac7067655151580fd:eyJzZWxlY3RlZExpbmVDb3VudCI6NjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxOGY2Mzg1NzVjYzFiN2E5YmY2MDEyNzYzYmZkMDE5YjEwN2FjZDU5YWMxOTY1NTBhNjc0Y2RkOGI1YzhjYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YjA0NDkxNDY5NzIyZTgzNjNhOTRlNDA0NDUzOGUwMTNhMmEyMTdlMzZiMWU1NjhiYTYwYWNiN2I0YzhmMmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg2YjVkNmZhNzhmYzkxYjdjMDQxNjE5OWRjMTMxNzIxNTA1ZDE5Y2ExNDgxYjg4ZTk3NTgyMmIyMGI3YWFiNjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY1ZTNlZWU3ZDVmNGUzOWUyYWZlMGJjMzc3MTc4ZWRkM2U5ZGMwNjliMmU1ZTk5MjUyZTc3MDY0NjU5MjQwMzAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fcead8555994473ea35ad1fa9e814b98",
+      "statement": "Provider refinement validates a strict bounded operation schema, normalizes existing-node adds and sparse updates, and rejects invalid references or unsupported operations.",
+      "evidence": [
+        {
+          "resource": "repo://providers.py#L134-L238",
+          "version": "repo-lines-v1:sha256:fce58ce8f98a5daffbd2436ba3430bf13b3ca2e860c97281c5bcde879212dad2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTA1LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI4ZmUwMTRkMjZkYzllYjMyNWRkNDJjNTdhZDY0MGMwMTFhZmI5OGRkNzRkNTliNmI0YjkyNjQxYzY1ZWEwOGQyIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0ZTRiYjNmMjY2OTIxZWY3OWMyMDcxNWU1ZThjNTk4N2NmZjFkNmUwYjM3ZWUyN2FhMTk0NjA4YTk5ZDRlMzcyIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlNWM0NTZjMWRiNGE2NGI1OTk2NDkzMjRkM2MzYjYxNDMxNWI3YWZjMGQ3Yzg4OTI3MGNmOWI4N2FiNDYwMTBkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.2",
+    "at": "2026-10-20T22:38:50.689Z"
+  }
+}
