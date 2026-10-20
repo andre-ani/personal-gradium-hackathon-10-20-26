@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:ec6acc825b52d90e88657c90405791a5fe7e85bb89dfd08c79d92ed94ab7d2a8",
+  "claims": [
+    {
+      "id": "claim_8581482cb7e0456f8dde357324696212",
+      "statement": "The FastAPI /ws/chat endpoint delegates session handling to Gradbot with process configuration and an on_start callback, without application tool or reconfiguration callbacks.",
+      "evidence": [
+        {
+          "resource": "repo://main.py#L30-L34",
+          "version": "repo-lines-v1:sha256:4d34e09b2324cb227f620c089f66a72832c5c8300507308ee35a210ae75292a4:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2YwYjk4YThhNzQ3MzdkMTQ4MzA1NTkyZTEyYmIzZmYzMTNjMjJjMzFkNWI2OTg2MmI3YjU2ZDg2NjliNTAzZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzBjMWYxODhmMTQyZWQ3YTgyNDY4MGIyMDcxNzJjNTUxOWJjNjE0YTQ4ZmRhN2NmMTY3ZWRiOGRkZjc5OTU2YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGNjNGE3ZDFjYzc5NmFiYTNlNDY3MjMzMjdmNTE3ZTlmODExOTgyZDI1MGYwNzAyOTg2ZTRiNTc2NGFkOTU4OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTliYzFhM2VjYWI3OTc5NWY0ZTQzMGQyMTJiNDg0NTY2MTE5ZjY4YzMwZDM3MTI3YTY1OWNiYWVlNTY2MTgwYyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_b16c10aefa3a43d5a4aec9f0fdc14143",
+      "statement": "The server supplies a fixed brief assistant prompt, falls back to an English voice, and forces assistant_speaks_first true and silence_timeout_s zero after merging Gradbot session settings.",
+      "evidence": [
+        {
+          "resource": "repo://main.py#L8-L27",
+          "version": "repo-lines-v1:sha256:a2a0f555ce6692f8657931d951b67711b5fdcbf08fd2081ff3eba498e0fc258b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRiNjg5NTlmMmRhMGJmNDUyY2FhMTczMTYyNTI1MTRkMWYyZmU0ODY1ZjY3YTQ3YjJmNzk2NDg2MmY5YTAzNWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzFmMTg4ZjE0MmVkN2E4MjQ2ODBiMjA3MTcyYzU1MTliYzYxNGE0OGZkYTdjZjE2N2VkYjhkZGY3OTk1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFkZDE4MGNmNTJhYjNmMjEzM2RjZWJhNWUwMzk0NDNjNzQ1M2VjNzQxODUzZjMxNDdmMmY3NmM0NWYyNTY3YWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk4Y2M5N2MzYWIwZjEyZWY0ZTBkZjExMjNhNzhkOTVhMjU5NTdmNmE5ODQwYzAyZDZhYTY3Mjk4YTM0NDkwZTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_e8cfd2595e4c45a8b02c5bff408acabd",
+      "statement": "The browser starts the audio player before opening /ws/chat, sends selected voice settings in a start message, and forwards encoded audio while recording.",
+      "evidence": [
+        {
+          "resource": "repo://static/index.html#L739-L798",
+          "version": "repo-lines-v1:sha256:1af67a893783fdda7a40b9ffa7be7fc5214cda01b96de1d829cd6cbe12777499:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzOTE1NWZjOGI0NTA4Yzk0ZDdkMjgxNjFmYzA5YjVkMDA1YmZiOGZiYTg3ZTY5YWEwZWI4YzNkYTk4NjNiYWEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImRhOWY4NmQyOGU3ODRmOWZkMzFmYjcyZDE1ZjYwY2JjZWFhZmRkNjY5Y2JkNWI2ZGE3ODg4YTAyMzMyMWViYjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlMTE3YzlhMTY1N2YyNDkzZTUwZDJlMzExYWQ2Y2I3MDk0OGEwMzc4N2FiZmFmZDI4NDllYmUxYWRlYzAxMDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_80deb794a49d4017ba0eb70a25a36a51",
+      "statement": "Explicit Stop stops the audio player, but the current unexpected WebSocket close handler only resets controls and status without stopping the player.",
+      "evidence": [
+        {
+          "resource": "repo://static/index.html#L806-L828",
+          "version": "repo-lines-v1:sha256:eb30b21ec31485d766ce96adb654a21d8bbaab8efa5892b96153a5b71609bfe3:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY2YWE0YjBlYTZlNjI3NTRkMjFlNDdkMTk2MDAxZmRhMDg2MDFjOTZlOTY2NmEwODdhNjZkMjYxZjJhMDljZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2Yzc1NzRmMDZjOTU1MzE4ZTM2YzBmYTU4ZmZjNWJiZTY3YmVjOWU2MjhjYjVkNmVjMzk3MDVmMzZjOTFmZmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZmMWE3ZTFjNWRhN2E5NDZiYjk1YWNjOGMxMzlkOGRjY2E3ZTZlNTRhODcwMGMwNmY4YjUxMmFlMDY2YmI3YjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjUxYzBiM2RlN2EwNTY5NDJjY2UwYTRhMWY5OWM0YmY3ZmVjODI5ODM5MTE4ZDJjMzJlZWJjMjIyNGYwNjliMzQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_12d7089dda2343e5ac6508cd94cea177",
+      "statement": "Provider configuration is loaded at application import and shared between the WebSocket bridge and route setup, which enables voice selection.",
+      "evidence": [
+        {
+          "resource": "repo://main.py#L13-L15",
+          "version": "repo-lines-v1:sha256:569a3a408e519a4ab2071b9f018ed8f29a7cb4eda1ad981ec7d347b67a84c9e3:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTEwOWE1MjE5OTZmMDVhNDM5NTNhNWE3YjQ4MjFjODk0MDBhYWE3NGFmY2I4YTczNjlmMTc4ZWU3OWFkYzgzNSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWQwODFkNWVkYTcyMTIwNDQwNWM2ZmM0OWYwMjdmYmVjOGE0MDMwNWQ1MWJlNTk2M2M0NDBkOTAzNTkzNDNkNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTM4NDQ1NTdiNGIxMTcyN2Q0N2U5N2EyNTkwZGVkZjZmOTJiMTY3N2JkZmQ4NzUwMjhlMTk5YWM2NzU3YTdlMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTBhY2UwYjQ0OGZjMmNhYTAwYjM2NmY1OWY5ZWJiMDBlY2UyZWIzODY5YTc4MTI5MDZkOGVjM2NhOWU5Mzg4OCJ9"
+        },
+        {
+          "resource": "repo://main.py#L30-L39",
+          "version": "repo-lines-v1:sha256:8cef27e4b8b44ede65e69cb97c7595ae14274ce4a601f62c755e68e9df1261fe:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmMGI5OGE4YTc0NzM3ZDE0ODMwNTU5MmUxMmJiM2ZmMzEzYzIyYzMxZDViNjk4NjJiN2I1NmQ4NjY5YjUwM2YiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZhZmJhMDUyN2MzOTUzYzRiNmUwZTViNTczOWJhODM2MTJmODA1M2JjZGM5NDY2NzMwMTkzY2QxZDU5MGI0MDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhjYzRhN2QxY2M3OTZhYmEzZTQ2NzIzMzI3ZjUxN2U5ZjgxMTk4MmQyNTBmMDcwMjk4NmU0YjU3NjRhZDk1ODkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.2",
+    "at": "2026-10-20T21:33:15.500Z"
+  }
+}

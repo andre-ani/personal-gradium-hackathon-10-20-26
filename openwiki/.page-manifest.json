@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "pages": {
+    "/openwiki/architecture/voice-session.md": {
+      "pageVersion": "sha256:ec6acc825b52d90e88657c90405791a5fe7e85bb89dfd08c79d92ed94ab7d2a8",
+      "completedBy": "codex",
+      "completedRunId": "42308c44-5794-46b8-bf57-572c0eed2080",
+      "gitHead": "856212a337c38a7558ce0919773fab8a0d016044",
+      "sourceFingerprint": "sha256:4096ac240f210b12b3861e442a9b065cc202852b5e8d24eab32ce8d6fbca3b1d"
+    },
+    "/openwiki/quickstart.md": {
+      "pageVersion": "sha256:4ff0c8789b883ff449d922df9f42f4423fd5500e25813b29a9bd7714434fd8e2",
+      "completedBy": "codex",
+      "completedRunId": "42308c44-5794-46b8-bf57-572c0eed2080",
+      "gitHead": "856212a337c38a7558ce0919773fab8a0d016044",
+      "sourceFingerprint": "sha256:4096ac240f210b12b3861e442a9b065cc202852b5e8d24eab32ce8d6fbca3b1d"
+    }
+  }
+}

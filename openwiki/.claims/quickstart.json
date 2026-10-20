@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:4ff0c8789b883ff449d922df9f42f4423fd5500e25813b29a9bd7714434fd8e2",
+  "claims": [
+    {
+      "id": "claim_b4ffcf4e3dd44dedbac0eb80969d1f71",
+      "statement": "The starter requires Python 3.12 or newer and pins Gradbot 0.2.0.",
+      "evidence": [
+        {
+          "resource": "repo://pyproject.toml#L1-L6",
+          "version": "repo-lines-v1:sha256:41f5c6f547be04081d1613b37226731a3e2d1a87835806609d7fabba4cb8fa11:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzAyYTgxYzM4MzZlZGVmMmQwYmExMWQyMzUzZmI2ZGFiYzc3NzE1MGE3Y2E4M2VhMGQ5ZTlhNzAzMTNmZWFiYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjZiNzc0YjYxODc4NTEwNDYxNjBiNzAxNmMyMzA4ZTQ0MTc1ODRiMmQxOWI0MWQ3MmJiOGJjNDgyMDdmOTEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_ebf4c6bbc5a64b98947ca6a2796f478d",
+      "statement": "The documented local launch uses uv with .env, runs main:app through uvicorn, and binds to 127.0.0.1 port 8000.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L8-L17",
+          "version": "repo-lines-v1:sha256:77c997ae4d7b4b68371a94d1d5c65e282923d107d667242338ec68eff446e4b5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjNDNmYjg5ZGQ3MTM5MTcwNmJiNjU1MzM3MTM5YWU2NmFjMTBmYWNjNDI2MmJjZDI0OGMyMjljZjBlMjVkMDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkYjdlZGU4YmYzMWY5Y2MzZWQxOTNhZDcwMGY4NmY2Mjc1YTI2ZjEwY2ZjMGI5NzVhMjQzNjdhZWRkYTc4NDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3ZmM0NjM2NjcwYmE4ODE4ZDE2OTJiNjllMThjYjYzNDQxMTQyZDQxODMwNWQ1MDYwOWViMTQ5YjcyNWJlYWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4NDEzYzc5ZmFlYmU5ZDIyNGNhZTNjMGY1NTgwNzdiNTZhNDNhODBjNTE4MGYzZDRhNGY5MDMyMDZiZmIyMTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ce4e03e315764b7e918c45310edcb958",
+      "statement": "The environment template defines GRADIUM_API_KEY, LLM_API_KEY, LLM_BASE_URL, and LLM_MODEL without credential values.",
+      "evidence": [
+        {
+          "resource": "repo://.env.example#L1-L4",
+          "version": "repo-lines-v1:sha256:a233749ddd4c51f1a40ccf6b393272b5e3aaff4cbc519646d271e4f70e364d1a:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTJmODg4MWJlNzYyOTRiNGQ1OWYxZTFlOWI0NzRmNzc1N2EwZTA2ZDZhOTZkNzU4NDhkZmI4OWJjMmUxNGFiMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWJhZDI0ODEzNWYyMDkyN2NlYmEzNDJhNGY2Njk5NDljN2EwYzA4NWRmNWFjYmQwMTBkMmYxYjAxN2FlY2FhNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_2ab98bb31d9644e486b53d2cff4f7c03",
+      "statement": "Git excludes .env and .env.* except .env.example, as well as virtual environment and Python cache artifacts.",
+      "evidence": [
+        {
+          "resource": "repo://.gitignore#L1-L8",
+          "version": "repo-lines-v1:sha256:af80f3b60fc74966c1047f1718584e1f9913e8c47b0651c95bcd47dbe2676128:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDgyMzlhYWRlYmY5YTliMTA1ZTJlZmVjY2EzMTI5ZjkxOTgwNjc5OTM0MTg1MjlkZGM4MTE3ZDQxOTk3YjdlYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzkyZGM1OTE2ZWFiYzFlYTc5OWFlZGU0NmI5MGMzODFjYmYzZDBkNGRmYzFlMmJkNzE3MWRjMjE5ZDYyODczNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_d4b60e166d0f4934b49746e16df44c8a",
+      "statement": "The browser marks the call Listening on WebSocket open, so that label does not prove a successful provider reply.",
+      "evidence": [
+        {
+          "resource": "repo://static/index.html#L788-L798",
+          "version": "repo-lines-v1:sha256:5154f9edb13850906e16cba6229344b5893c96bbfb56208403d413b768e9ab6a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxYmFjOWIxOGYyODNkYTc3NjJlNmYwMjM2MTk2ZmI5M2ZkODAyOGZjMmNiZWFlZTA2NGMxMGQ4M2U2MTNhNGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0NWZiNzM1NDdjZTAwNmNhNzMwMWVlYjMyMjkyZjllNmQyODI5MmE2MWUxODk1NjNmYjkxZTBhZjU0NWQxZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlMTE3YzlhMTY1N2YyNDkzZTUwZDJlMzExYWQ2Y2I3MDk0OGEwMzc4N2FiZmFmZDI4NDllYmUxYWRlYzAxMDIifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.2",
+    "at": "2026-10-20T21:33:15.500Z"
+  }
+}
