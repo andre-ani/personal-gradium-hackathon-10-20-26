@@ -8,7 +8,7 @@
 import { Circle as GCircle, Path, Text as GText } from '@antv/g';
 import { BaseEdge, BaseNode, ExtensionCategory, register } from '@antv/g6';
 import { RoughGenerator } from 'roughjs/bin/generator.js';
-import { sketchEdgeRoute } from './edge-geometry.js';
+import { graphEdgeRoute } from './graph-edge-routes.js';
 
 export const SKETCH_NODE_TYPE = 'sketch-rect';
 export const SKETCH_EDGE_TYPE = 'sketch-cubic-horizontal';

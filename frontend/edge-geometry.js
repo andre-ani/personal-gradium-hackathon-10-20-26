@@ -142,6 +142,14 @@ function smoothPolyline(points, radius = 3) {
     return [['M', clean[0][0], clean[0][1]], ...clean.slice(1).map((point, index) => lineCommand(clean[index], point))];
   }
 
+  // Grid coordinates often split a straight leg into many tiny pieces.
+  // Remove those splits before choosing a visible, rounded turn radius.
+  for (let index = clean.length - 2; index > 0; index--) {
+    const a = clean[index - 1], b = clean[index], c = clean[index + 1];
+    const cross = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+    const forward = (b[0] - a[0]) * (c[0] - b[0]) + (b[1] - a[1]) * (c[1] - b[1]);
+    if (Math.abs(cross) < EPSILON && forward >= 0) clean.splice(index, 1);
+  }
   const path = [['M', clean[0][0], clean[0][1]]];
   let current = clean[0];
   for (let index = 1; index < clean.length - 1; index += 1) {
@@ -151,7 +159,7 @@ function smoothPolyline(points, radius = 3) {
     const incomingLength = distance(previous, corner);
     const outgoingLength = distance(corner, next);
     if (incomingLength < EPSILON || outgoingLength < EPSILON) continue;
-    const turnRadius = Math.min(radius, incomingLength * 0.22, outgoingLength * 0.22);
+    const turnRadius = Math.min(radius, incomingLength * 0.45, outgoingLength * 0.45);
     if (turnRadius < EPSILON) continue;
     const incoming = [(corner[0] - previous[0]) / incomingLength, (corner[1] - previous[1]) / incomingLength];
     const outgoing = [(next[0] - corner[0]) / outgoingLength, (next[1] - corner[1]) / outgoingLength];
@@ -263,12 +271,21 @@ function routeSegments(route) {
   return pathSegments(path, 10);
 }
 
+function nearSegment(point, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], length = dx * dx + dy * dy;
+  const t = length ? clamp(((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) / length, 0, 1) : 0;
+  return Math.hypot(point[0] - a[0] - dx * t, point[1] - a[1] - dy * t);
+}
+function segmentsConflict(a, b, c, d) {
+  return segmentsCross(a, b, c, d) || Math.min(nearSegment(a, c, d), nearSegment(b, c, d), nearSegment(c, a, b), nearSegment(d, a, b)) < 9;
+}
+
 function occupiedCrossingCost(start, end, occupied) {
   let crossings = 0;
   for (const route of occupied) {
     for (const [otherStart, otherEnd] of route) {
       if (distance(start, otherStart) < 2 || distance(start, otherEnd) < 2 || distance(end, otherStart) < 2 || distance(end, otherEnd) < 2) continue;
-      if (segmentsCross(start, end, otherStart, otherEnd)) {
+      if (segmentsConflict(start, end, otherStart, otherEnd)) {
         crossings += 1;
         break;
       }
@@ -291,6 +308,10 @@ function crossingCoordinates(start, end, occupied) {
     const routeMaxX = Math.max(...routePoints.map((point) => point[0])) + 16;
     const routeMinY = Math.min(...routePoints.map((point) => point[1])) - 16;
     const routeMaxY = Math.max(...routePoints.map((point) => point[1])) + 16;
+    if (route.some(([a, b]) => segmentsConflict(start, end, a, b))) {
+      extrasX.push(routeMinX, routeMaxX);
+      extrasY.push(routeMinY, routeMaxY);
+    }
     for (const [otherStart, otherEnd] of route) {
       if (!segmentsCross(start, end, otherStart, otherEnd)) continue;
       const denominator = (end[0] - start[0]) * (otherEnd[1] - otherStart[1])
@@ -436,13 +457,71 @@ export function sketchEdgeRoute(source, target, seed = 1, options = {}) {
   }
 
   const crossing = directCrossesOccupied ? crossingCoordinates(start, end, occupied) : {};
-  const waypoints = gridRoute(start, end, obstacles, occupied, crossing);
+  const spacious = obstacles.map(box => {
+    const expanded = { ...box, left: box.left - 36, right: box.right + 36, top: box.top - 36, bottom: box.bottom + 36 };
+    return insideObstacle(start, expanded) || insideObstacle(end, expanded) ? box : expanded;
+  });
+  const waypoints = gridRoute(start, end, spacious, occupied, crossing) || gridRoute(start, end, obstacles, occupied, crossing);
   if (waypoints) {
-    let routed = smoothPolyline(waypoints, 3);
-    if (pathHitsObstacles(routed, obstacles)) routed = smoothPolyline(waypoints, 0);
-    if (!pathHitsObstacles(routed, obstacles)) return result(routed);
+    for (const radius of [42, 28, 18, 8, 3]) {
+      const routed = smoothPolyline(waypoints, radius);
+      if (!pathHitsObstacles(routed, obstacles)) return result(routed);
+    }
   }
   // If overlapping cards leave no finite channel, preserve the bounded
   // gesture instead of returning malformed path data.
   return result(direct);
+}
+
+function lerpPoint(a, b, t) { return a.map((value, axis) => value + (b[axis] - value) * t); }
+function splitCurve(curve, t) {
+  const a = lerpPoint(curve[0], curve[1], t), b = lerpPoint(curve[1], curve[2], t), c = lerpPoint(curve[2], curve[3], t);
+  const d = lerpPoint(a, b, t), e = lerpPoint(b, c, t), f = lerpPoint(d, e, t);
+  return [[curve[0], a, d, f], [f, e, c, curve[3]]];
+}
+function tangent(a, b) {
+  const length = distance(a, b) || 1;
+  return [(b[0] - a[0]) / length, (b[1] - a[1]) / length];
+}
+
+/** Fillet every discontinuous join, including attachment stubs. Never a square fallback. */
+export function smoothSketchRoute(route, radius = 38) {
+  let start = route.path[0].slice(1, 3);
+  const curves = route.path.slice(1).map(segment => {
+    const curve = [start, segment.slice(1, 3), segment.slice(3, 5), segment.slice(5, 7)];
+    start = curve[3]; return curve;
+  });
+  const output = [];
+  for (let index = 0; index < curves.length - 1; index++) {
+    let left = curves[index], right = curves[index + 1];
+    const incoming = tangent(left[2], left[3]), outgoing = tangent(right[0], right[1]);
+    if (incoming[0] * outgoing[0] + incoming[1] * outgoing[1] > .999) { output.push(left); continue; }
+    const leftLength = distance(left[0], left[1]) + distance(left[1], left[2]) + distance(left[2], left[3]);
+    const rightLength = distance(right[0], right[1]) + distance(right[1], right[2]) + distance(right[2], right[3]);
+    left = splitCurve(left, 1 - Math.min(.42, radius / Math.max(1, leftLength)))[0];
+    right = splitCurve(right, Math.min(.42, radius / Math.max(1, rightLength)))[1];
+    const enter = tangent(left[2], left[3]), leave = tangent(right[0], right[1]);
+    const handle = distance(left[3], right[0]) * .4;
+    output.push(left, [left[3], left[3].map((v, i) => v + enter[i] * handle), right[0].map((v, i) => v - leave[i] * handle), right[0]]);
+    curves[index + 1] = right;
+  }
+  if (curves.length) output.push(curves.at(-1));
+  return result([route.path[0], ...output.map(curve => ['C', ...curve[1], ...curve[2], ...curve[3]])]);
+}
+
+/** A wide U-shaped bypass for a long link that skips over a row of cards. */
+export function outsideSketchRoute(source, target, side, options = {}) {
+  const obstacles = (options.obstacles || []).filter(box => !sameId(box.id, options.sourceId) && !sameId(box.id, options.targetId)).map(normalizeObstacle).filter(Boolean);
+  const occupied = (options.occupiedRoutes || []).map(routeSegments).filter(route => route.length);
+  const vertical = side === 'left' || side === 'right', axis = vertical ? 0 : 1;
+  const sign = side === 'left' || side === 'top' ? -1 : 1;
+  const outside = sign > 0 ? Math.max(source[axis], target[axis], ...obstacles.map(box => vertical ? box.right : box.bottom))
+    : Math.min(source[axis], target[axis], ...obstacles.map(box => vertical ? box.left : box.top));
+  for (const margin of [92, 132, 196, 280]) {
+    const first = [...source], second = [...target];
+    first[axis] = second[axis] = outside + sign * margin;
+    const path = [['M', ...source], ['C', ...first, ...second, ...target]];
+    if (!pathHitsObstacles(path, obstacles) && !pathCrossesOccupied(path, occupied)) return result(path);
+  }
+  return null;
 }
