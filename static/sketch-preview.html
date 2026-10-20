@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kitchen routine · sketch renderer preview</title>
+    <style>
+      :root {
+        color: #17335f;
+        background: #e5e5e2;
+        font-family: Figtree, Avenir Next, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-synthesis: none;
+      }
+      * { box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; }
+      body { margin: 0; min-height: 100dvh; overflow: hidden; }
+      button { font: inherit; cursor: pointer; }
+      button:focus-visible { outline: 3px solid rgba(36, 85, 166, .58); outline-offset: 3px; }
+      [hidden] { display: none !important; }
+      .shell { position: relative; z-index: 1; width: 100%; height: 100dvh; }
+      .stage { position: relative; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+      #graph { position: absolute; inset: 0; z-index: 1; }
+      .stage-label { position: absolute; z-index: 2; top: 18px; left: 22px; color: #2455a6; font-size: 11px; letter-spacing: .02em; opacity: .75; pointer-events: none; }
+      .floating-controls { position: absolute; z-index: 4; top: 14px; right: 16px; display: flex; gap: 6px; align-items: center; }
+      .control { display: inline-flex; align-items: center; gap: 7px; border: 0; border-radius: 0; padding: 8px 9px; color: #174a9c; background: transparent; box-shadow: none; transition: color 160ms ease; }
+      .control:hover { color: #123b7d; background: transparent; box-shadow: none; }
+      .control:active { transform: translateY(0); }
+      .control:disabled { cursor: wait; opacity: .5; transform: none; }
+      .control[data-active="true"] { color: #123b7d; background: transparent; text-decoration: underline; text-underline-offset: 4px; }
+      .script-panel { position: absolute; z-index: 3; top: 62px; right: 16px; width: min(360px, calc(100% - 32px)); max-height: calc(100% - 80px); overflow: hidden; padding: 20px 19px 18px; border-radius: 16px; background: rgba(241, 241, 238, .9); box-shadow: 0 20px 58px rgba(23, 74, 156, .18); backdrop-filter: blur(11px); }
+      .script-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+      .script-kicker { margin: 0 0 4px; color: #6a87b8; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+      .script-head h1 { margin: 0; color: #174a9c; font-family: "Patrick Hand", "Comic Sans MS", cursive; font-size: 25px; font-weight: 500; line-height: 1; }
+      .script-close { border: 0; padding: 2px 4px; color: #2455a6; background: transparent; font-size: 18px; line-height: 1; }
+      .step-message { margin: 13px 0 0; color: #2455a6; font-size: 13px; line-height: 1.45; }
+      .transcript { max-height: 57dvh; margin-top: 17px; overflow: auto; padding-right: 8px; scrollbar-width: thin; }
+      .transcript p { margin: 0 0 13px; padding-left: 12px; border-left: 1px solid transparent; color: #3b557b; font-size: 12px; line-height: 1.55; }
+      .transcript p::before { content: attr(data-beat); display: block; margin-bottom: 3px; color: #6a87b8; font-size: 10px; letter-spacing: .08em; }
+      .transcript p[data-current="true"] { border-left-color: #2455a6; color: #174a9c; }
+      .fixture-note { margin: 16px 0 0; color: #6a87b8; font-size: 11px; line-height: 1.45; }
+      @media (max-width: 600px) {
+        .stage-label { top: 16px; left: 16px; max-width: 48%; line-height: 1.35; }
+        .floating-controls { top: auto; right: 14px; bottom: 14px; }
+        .script-panel { top: 54px; right: 12px; width: calc(100% - 24px); max-height: calc(100% - 110px); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .control { transition: none; }
+      }
+    </style>
+    <link rel="stylesheet" href="/static/paper-theme.css" />
+  </head>
+  <body>
+    <div id="paper-background" aria-hidden="true"></div>
+    <div class="shell">
+      <main class="stage" aria-label="Kitchen routine sketch preview">
+        <div id="graph"></div>
+        <div class="stage-label">Kitchen routine · deterministic G6 sketch fixture</div>
+        <div class="floating-controls" role="toolbar" aria-label="Preview controls">
+          <button id="script-toggle" class="control" type="button" aria-expanded="false" aria-controls="script-panel">Script</button>
+          <button id="reorder" class="control" type="button" title="Cycle horizontal, vertical and reverse layouts">Rearrange</button>
+          <button id="draw" class="control" type="button">Replay</button>
+          <button id="reset" class="control" type="button">Reset</button>
+        </div>
+        <section id="script-panel" class="script-panel" hidden aria-label="Kitchen story transcript">
+          <div class="script-head">
+            <div>
+              <p class="script-kicker">Local deterministic example</p>
+              <h1 id="step-title">Ready to draw</h1>
+            </div>
+            <button id="script-close" class="script-close" type="button" aria-label="Close script">×</button>
+          </div>
+          <p id="step-message" class="step-message">Replay the kitchen story to inspect the sketch renderer.</p>
+          <div id="transcript" class="transcript" role="log" aria-live="polite" aria-label="Kitchen story transcript"></div>
+          <p class="fixture-note">Supplied script, local renderer only. No model or provider call is made.</p>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/static/sketch-preview.js"></script>
+  </body>
+</html>

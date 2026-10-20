@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ink marks · sketch icon preview</title>
+    <link rel="stylesheet" href="/static/paper-theme.css" />
+    <style>
+      :root {
+        --preview-paper: #e5e5e2;
+        --preview-card: rgba(241, 241, 238, .88);
+        --preview-ink: #174a9c;
+        --preview-muted: #58708f;
+        --preview-rule: rgba(23, 74, 156, .18);
+      }
+
+      * { box-sizing: border-box; }
+
+      html { min-height: 100%; background: var(--preview-paper); }
+
+      body {
+        min-height: 100dvh;
+        margin: 0;
+        color: var(--preview-ink);
+        background:
+          linear-gradient(rgba(36, 85, 166, .045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(36, 85, 166, .035) 1px, transparent 1px),
+          var(--preview-paper);
+        background-size: 28px 28px, 28px 28px, auto;
+        font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+        font-synthesis: none;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .page {
+        width: min(1120px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: clamp(42px, 8vw, 90px) 0 64px;
+      }
+
+      .hero {
+        height: auto;
+        padding: 0 0 30px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 28px;
+        padding-bottom: 30px;
+        border-bottom: 1px solid var(--preview-rule);
+      }
+
+      .kicker {
+        margin: 0 0 10px;
+        color: var(--preview-muted);
+        font-size: 11px;
+        letter-spacing: .11em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 620px;
+        margin: 0;
+        color: var(--preview-ink);
+        font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+        font-size: clamp(38px, 6vw, 68px);
+        font-weight: 400;
+        line-height: .92;
+        letter-spacing: .01em;
+      }
+
+      .lede {
+        max-width: 490px;
+        margin: 18px 0 0;
+        color: var(--preview-muted);
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .note {
+        align-self: end;
+        max-width: 180px;
+        margin: 0;
+        color: var(--preview-muted);
+        font-size: 12px;
+        line-height: 1.45;
+        text-align: right;
+      }
+
+      .section {
+        padding-top: 42px;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 17px;
+      }
+
+      .section h2 {
+        margin: 0;
+        color: var(--preview-ink);
+        font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+        font-size: 28px;
+        font-weight: 400;
+        line-height: 1;
+      }
+
+      .section-count {
+        color: var(--preview-muted);
+        font-size: 11px;
+      }
+
+      .icon-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+        gap: 9px;
+      }
+
+      .icon-card {
+        min-height: 134px;
+        padding: 17px 15px 14px;
+        border: 1px solid var(--preview-rule);
+        border-radius: 4px 7px 5px 6px;
+        background: var(--preview-card);
+        box-shadow: 0 5px 16px rgba(25, 54, 95, .055);
+      }
+
+      .icon-card:nth-child(3n + 1) { transform: rotate(-.35deg); }
+      .icon-card:nth-child(3n + 2) { transform: rotate(.2deg); }
+
+      .icon-label {
+        display: block;
+        margin-top: 13px;
+        color: var(--preview-ink);
+        font-size: 12px;
+        line-height: 1.2;
+      }
+
+      .icon-sizes {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        min-height: 40px;
+        color: var(--preview-ink);
+      }
+
+      .icon-sizes span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        min-height: 40px;
+      }
+
+      .icon-sizes svg { display: block; overflow: visible; }
+
+      .size-key {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--preview-muted);
+        font-size: 10px;
+      }
+
+      .size-key::before {
+        content: '24';
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 21px;
+        height: 21px;
+        border: 1px solid var(--preview-rule);
+        border-radius: 50%;
+        font-size: 9px;
+      }
+
+      .size-key::after {
+        content: '40';
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        margin-left: 3px;
+        border: 1px solid var(--preview-rule);
+        border-radius: 50%;
+        font-size: 9px;
+      }
+
+      .footer {
+        margin-top: 46px;
+        padding-top: 16px;
+        border-top: 1px solid var(--preview-rule);
+        color: var(--preview-muted);
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      .error {
+        padding: 18px;
+        border-left: 3px solid var(--preview-ink);
+        color: var(--preview-muted);
+      }
+
+      @media (max-width: 680px) {
+        .page { width: min(100% - 28px, 520px); }
+        .hero { grid-template-columns: 1fr; gap: 18px; }
+        .note { max-width: 300px; text-align: left; }
+        .icon-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .icon-card { transform: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <div>
+          <p class="kicker">Ink kit · G6 concept canvas</p>
+          <h1>Little marks for a living canvas.</h1>
+          <p class="lede">A small vocabulary for the kitchen story: drawn with a steady hand, then given just enough paper wobble to stay warm at every redraw.</p>
+        </div>
+        <p class="note">Every mark is a native 24 × 24 path. The larger sample is the same geometry, scaled for a calmer glance.</p>
+      </header>
+
+      <section class="section" aria-label="Morphing state icons"><h2>Click to change state</h2><div class="morph-demos" style="display:flex;gap:14px;margin-top:20px;flex-wrap:wrap"><button id="morph-mic" type="button" aria-pressed="false">Microphone / stop</button><button id="morph-chat" type="button" aria-pressed="false">Chat / close</button><button id="morph-play" type="button" aria-pressed="false">Play / pause</button></div></section>
+      <div id="icon-sections" aria-live="polite"></div>
+
+      <footer class="footer">
+        Dark blue is a preview color only. The icon API uses <code>currentColor</code> so the canvas can theme the same paths in place.
+        <span class="size-key" aria-label="Sample sizes"></span>
+      </footer>
+    </main>
+
+    <script type="module">
+      const sections = [
+        {
+          title: 'Kitchen routine',
+          names: ['mug', 'kettle', 'tea', 'spoon', 'milk', 'utensils', 'chopping-board', 'knife', 'safety', 'breakfast', 'dishwasher'],
+        },
+        {
+          title: 'Flow and grouping',
+          names: ['repeat', 'activity', 'move', 'calendar'],
+        },
+        {
+          title: 'Canvas controls',
+          names: ['mic', 'stop', 'play', 'pause', 'fit', 'chat', 'close', 'replay', 'reset'],
+        },
+      ];
+
+      const humanName = (name) => name.split('-').map((part) => part[0].toUpperCase() + part.slice(1)).join(' ');
+      const host = document.getElementById('icon-sections');
+
+      try {
+        const { createSketchIcon, sketchIconPaths } = await import('/static/sketch-icons.js');
+        const { mountMorphingControl } = await import('/static/morphing-controls.js');
+        for (const [id, from, to] of [['morph-mic','mic','stop'],['morph-chat','chat','close'],['morph-play','play','pause']]) {
+          const button = document.getElementById(id);
+          Object.assign(button.style,{display:'inline-flex',alignItems:'center',gap:'12px',border:'0',borderRadius:'12px',padding:'16px',color:'#174a9c',background:'#f1f1ee',boxShadow:'0 6px 20px #28313a18',font:'inherit',cursor:'pointer'});
+          const control = mountMorphingControl(button,{from,to,size:28});
+          button.onclick=()=>{const active=button.getAttribute('aria-pressed')!=='true';button.setAttribute('aria-pressed',String(active));control.set(active);};
+        }
+        const available = (name) => sketchIconPaths(name).length > 0;
+        const render = (section) => {
+          const wrapper = document.createElement('section');
+          wrapper.className = 'section';
+          wrapper.setAttribute('aria-labelledby', `heading-${section.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`);
+
+          const head = document.createElement('div');
+          head.className = 'section-head';
+          const heading = document.createElement('h2');
+          heading.id = wrapper.getAttribute('aria-labelledby');
+          heading.textContent = section.title;
+          const count = document.createElement('span');
+          count.className = 'section-count';
+          count.textContent = `${section.names.length} marks`;
+          head.append(heading, count);
+
+          const grid = document.createElement('div');
+          grid.className = 'icon-grid';
+          for (const name of section.names.filter(available)) {
+            const card = document.createElement('article');
+            card.className = 'icon-card';
+            card.setAttribute('aria-label', humanName(name));
+            const samples = document.createElement('div');
+            samples.className = 'icon-sizes';
+            const small = document.createElement('span');
+            const large = document.createElement('span');
+            small.append(createSketchIcon(name, { size: 24, decorative: true }));
+            large.append(createSketchIcon(name, { size: 40, decorative: true }));
+            samples.append(small, large);
+            const label = document.createElement('span');
+            label.className = 'icon-label';
+            label.textContent = humanName(name);
+            card.append(samples, label);
+            grid.append(card);
+          }
+          wrapper.append(head, grid);
+          return wrapper;
+        };
+        host.replaceChildren(...sections.map(render));
+      } catch (error) {
+        const message = document.createElement('p');
+        message.className = 'error';
+        message.textContent = `The icon bundle is not available yet. ${error instanceof Error ? error.message : ''}`;
+        host.replaceChildren(message);
+      }
+    </script>
+  </body>
+</html>

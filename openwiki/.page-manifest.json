@@ -2,18 +2,18 @@
   "schemaVersion": 1,
   "pages": {
     "/openwiki/architecture/voice-session.md": {
-      "pageVersion": "sha256:ec6acc825b52d90e88657c90405791a5fe7e85bb89dfd08c79d92ed94ab7d2a8",
+      "pageVersion": "sha256:2db4eceac034112f64a1d404b51fb918d59200d4a2fe4c18e0d6941e0d606fc9",
       "completedBy": "codex",
-      "completedRunId": "42308c44-5794-46b8-bf57-572c0eed2080",
-      "gitHead": "856212a337c38a7558ce0919773fab8a0d016044",
-      "sourceFingerprint": "sha256:4096ac240f210b12b3861e442a9b065cc202852b5e8d24eab32ce8d6fbca3b1d"
+      "completedRunId": "b68ddf76-048d-42c7-a4b6-fc1f5099d096",
+      "gitHead": "caa6d80920aa7c78ceaac61b151e4d7cc08e5c2e",
+      "sourceFingerprint": "sha256:4969c6baf3f19e01fcc0e1b99337b9d993a6268dd8230cf4a6ac5a80fb20d923"
     },
     "/openwiki/quickstart.md": {
-      "pageVersion": "sha256:4ff0c8789b883ff449d922df9f42f4423fd5500e25813b29a9bd7714434fd8e2",
+      "pageVersion": "sha256:d0b387aefccf43358fec0f988984f3a02a81b3aa6922d71b9c124d6fed0d42cc",
       "completedBy": "codex",
-      "completedRunId": "42308c44-5794-46b8-bf57-572c0eed2080",
-      "gitHead": "856212a337c38a7558ce0919773fab8a0d016044",
-      "sourceFingerprint": "sha256:4096ac240f210b12b3861e442a9b065cc202852b5e8d24eab32ce8d6fbca3b1d"
+      "completedRunId": "b68ddf76-048d-42c7-a4b6-fc1f5099d096",
+      "gitHead": "caa6d80920aa7c78ceaac61b151e4d7cc08e5c2e",
+      "sourceFingerprint": "sha256:4969c6baf3f19e01fcc0e1b99337b9d993a6268dd8230cf4a6ac5a80fb20d923"
     }
   }
 }

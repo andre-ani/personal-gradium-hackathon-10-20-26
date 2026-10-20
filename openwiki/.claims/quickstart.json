@@ -1,24 +1,24 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4ff0c8789b883ff449d922df9f42f4423fd5500e25813b29a9bd7714434fd8e2",
+  "pageVersion": "sha256:d0b387aefccf43358fec0f988984f3a02a81b3aa6922d71b9c124d6fed0d42cc",
   "claims": [
     {
       "id": "claim_b4ffcf4e3dd44dedbac0eb80969d1f71",
-      "statement": "The starter requires Python 3.12 or newer and pins Gradbot 0.2.0.",
+      "statement": "The starter requires Python 3.12 or newer and pins Gradbot 0.2.0 alongside aiohttp and wsproto dependencies.",
       "evidence": [
         {
-          "resource": "repo://pyproject.toml#L1-L6",
-          "version": "repo-lines-v1:sha256:41f5c6f547be04081d1613b37226731a3e2d1a87835806609d7fabba4cb8fa11:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzAyYTgxYzM4MzZlZGVmMmQwYmExMWQyMzUzZmI2ZGFiYzc3NzE1MGE3Y2E4M2VhMGQ5ZTlhNzAzMTNmZWFiYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjZiNzc0YjYxODc4NTEwNDYxNjBiNzAxNmMyMzA4ZTQ0MTc1ODRiMmQxOWI0MWQ3MmJiOGJjNDgyMDdmOTEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+          "resource": "repo://pyproject.toml#L1-L10",
+          "version": "repo-lines-v1:sha256:115a3ef348ee1e37691db6b299d5ffd2c0d501f73b3f321b5606aaeda0ff617a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwMmE4MWMzODM2ZWRlZjJkMGJhMTFkMjM1M2ZiNmRhYmM3NzcxNTBhN2NhODNlYTBkOWU5YTcwMzEzZmVhYmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5NDE2ZTA5Zjc4YmEzMTZjMDMyNTY4MjEzYjg1NWVlNzU2ZTQxNTY1ZDkxOGYwOTUxOWM4MWZkNjIwZjQwNjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
     {
       "id": "claim_ebf4c6bbc5a64b98947ca6a2796f478d",
-      "statement": "The documented local launch uses uv with .env, runs main:app through uvicorn, and binds to 127.0.0.1 port 8000.",
+      "statement": "The development script uses uv with .env, runs main:app through uvicorn with wsproto and reload, and binds to 127.0.0.1 port 8000.",
       "evidence": [
         {
-          "resource": "repo://README.md#L8-L17",
-          "version": "repo-lines-v1:sha256:77c997ae4d7b4b68371a94d1d5c65e282923d107d667242338ec68eff446e4b5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRjNDNmYjg5ZGQ3MTM5MTcwNmJiNjU1MzM3MTM5YWU2NmFjMTBmYWNjNDI2MmJjZDI0OGMyMjljZjBlMjVkMDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVkYjdlZGU4YmYzMWY5Y2MzZWQxOTNhZDcwMGY4NmY2Mjc1YTI2ZjEwY2ZjMGI5NzVhMjQzNjdhZWRkYTc4NDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ3ZmM0NjM2NjcwYmE4ODE4ZDE2OTJiNjllMThjYjYzNDQxMTQyZDQxODMwNWQ1MDYwOWViMTQ5YjcyNWJlYWMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4NDEzYzc5ZmFlYmU5ZDIyNGNhZTNjMGY1NTgwNzdiNTZhNDNhODBjNTE4MGYzZDRhNGY5MDMyMDZiZmIyMTEifQ"
+          "resource": "repo://package.json#L5-L8",
+          "version": "repo-lines-v1:sha256:caf4059822ee8123845d15ff1382fd59350ff3f347d5c9b7e9a4823dc2c679db:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzQ4MzNkNTk0OWMwM2E0MGNhOTUyNDkxNjEwYTY2NTk2NDRiM2FhNDY2MzYyZjc5OTAyMGRiZjE5ODE1NDdkYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNGQ1Y2QyZmI0ZjNkZjg4NDUxNTI1NWIzOTUyM2YyZjhiNTQ3MmJlZWE5ZjU2NmZmY2EyMDRkYjgwMjU2MTA0MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2MyNTI3Y2QzZTdkYjljYzI4M2UyZGJhMDU4NDRmZjVhZTA4Zjk1OWUwNTAzZjNhNDJlNDY3Nzk4ODVlMDc4YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzljNDY0ZTZmMjgyNjZiMjc5MjZkZGEyMmQ5ZjY5YWVhMzUzMWVhMzM4YTQxNjU3MzY4NTk1ZjJiNDc0YWI2YSJ9"
         }
       ]
     },
@@ -47,14 +47,28 @@
       "statement": "The browser marks the call Listening on WebSocket open, so that label does not prove a successful provider reply.",
       "evidence": [
         {
-          "resource": "repo://static/index.html#L788-L798",
-          "version": "repo-lines-v1:sha256:5154f9edb13850906e16cba6229344b5893c96bbfb56208403d413b768e9ab6a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIxYmFjOWIxOGYyODNkYTc3NjJlNmYwMjM2MTk2ZmI5M2ZkODAyOGZjMmNiZWFlZTA2NGMxMGQ4M2U2MTNhNGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ0NWZiNzM1NDdjZTAwNmNhNzMwMWVlYjMyMjkyZjllNmQyODI5MmE2MWUxODk1NjNmYjkxZTBhZjU0NWQxZGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJlMTE3YzlhMTY1N2YyNDkzZTUwZDJlMzExYWQ2Y2I3MDk0OGEwMzc4N2FiZmFmZDI4NDllYmUxYWRlYzAxMDIifQ"
+          "resource": "repo://frontend/app.js#L55-L57",
+          "version": "repo-lines-v1:sha256:3508ba47ce69e0bba81ed7bc1703fe7b0829975e72b0ea5d12ffe5c49a1ef04b:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDcyNTNhYTA3YmZiZDIxZTUwNDNhZjRmZWFiNWE5ODMxNjE3ZTAyM2FiNmQwOTZhMzVmZmYzMmRlMWVkNzljYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTY2MWMzMzdlM2NmNTI2ZWViZGRhNTQ4NDY3YTQyY2ZiNTZjYjVjOTc4NTUzMGUzYWM2MjM4NGU4ZDMxZjJlYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTliNGNmNDdjZGQ2NDg2N2Q4NGI0Y2FhYzAxNjAzMzhmZjQ4ZTQ4M2MwYmUwZDBkYWIyMjMxZGE3YTU0YTIxMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjZhYTNmMzdmYTRhMDEyZWQyYmRhZmY5MGM5YzNlNDVhNWMzMmRhMjJhZDM4YjY5Njk5ZjE5YjY5MGQ4MWNjYSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_e35b1851d96a46889a1a3b5c09bca8a3",
+      "statement": "Jev provider keys and an optional GRAPH_MODEL are separate from the Gradium and conversational LLM environment settings.",
+      "evidence": [
+        {
+          "resource": "repo://.env.example#L1-L10",
+          "version": "repo-lines-v1:sha256:37c830cce71fcce8ab916ef2d644cb41fbc766dc8954506e9147ebe323aaa5e1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyZjg4ODFiZTc2Mjk0YjRkNTlmMWUxZTliNDc0Zjc3NTdhMGUwNmQ2YTk2ZDc1ODQ4ZGZiODliYzJlMTRhYjEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE0MTE0YzczNWU3MzU1OGFhN2E2OTAyYThiNzM5M2Q1ZjJiYjg4OGZmY2EwMjI5MzU5MTRmYmNmODBkNmVjODgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://providers.py#L20-L49",
+          "version": "repo-lines-v1:sha256:ee86393e1b8ca9a9a5f641eb769989e44fcb4cee66b50c8e9517fe90d50b6817:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjZWUzZTkzZmNjMGQ5NTBlNmViZjJjNTcxMGQ4ZGY1MDMwNjVhNThkM2UwMmQ1OTgzMDIwZTBjZWVlYTdiNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwOTRmY2U1YTdkYzJkYWNmNTllN2M3NTcxM2U2NmFmNDRhOWFhMTEzODAxYTUzN2Q4MDc5Y2JhZDkwNGU0ZmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQwY2MyOTBmOGQxYWFiNjY2MmQyNzc2YzE3MDRhN2Y3ZmRkNzQ0MTA0OWI3YTk0YmEyZDkxMDkyZjUyYjFhMTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdmYmM2MjA2ZmE3NzliNDU2M2M0NjNiYTI4ZTMzYmY4NDFjMmY5NWYyMjRlYTZlYTZiMTY2NjcxYTU3OWUyMmEifQ"
         }
       ]
     }
   ],
   "verification": {
     "by": "openwiki/0.5.2",
-    "at": "2026-10-20T21:33:15.500Z"
+    "at": "2026-10-20T21:42:30.964Z"
   }
 }
