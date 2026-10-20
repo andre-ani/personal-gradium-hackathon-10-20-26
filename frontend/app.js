@@ -3,7 +3,6 @@ import { mountMorphingControl } from './morphing-controls.js';
 import { paperNodeStyle } from './sketch-style.js';
 import { mountPaperBackground } from './paper-background.js';
 import { registerSketchElements } from './sketch-elements.js';
-import { animate } from 'motion';
 import { drawSketchEntrance, animateSketchUpdates, resetSketchEntrance } from './sketch-motion.js';
 import { createUIMotion } from './ui-motion.js';
 import { createViewportMotion } from './viewport-motion.js';
@@ -164,7 +163,7 @@ document.addEventListener('keydown', event => {
   }
 });
 $('text-form').onsubmit=e=>{e.preventDefault();const text=$('thought').value.trim();if(text&&sendThought(text)){addTranscript(text);$('thought').value='';}};$('thought').onkeydown=e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))$('text-form').requestSubmit();};
-$('fit').onclick=()=>void viewportMotion.fit();$('reset').onclick=()=>{renderGeneration++;entranceController.abort();entranceController=new AbortController();demoTimers.forEach(clearTimeout);demoTimers=[];if(graphSocket?.readyState===WebSocket.OPEN){resetPending=true;renderEpoch++;graphSocket.send(JSON.stringify({type:'reset'}));uiMotion.clear([...$('transcript').children]);$('transcript').replaceChildren();uiMotion.status($('graph-help'), '');}};
+$('fit').onclick=()=>void viewportMotion.fit().catch(error=>{uiMotion.status($('graph-help'), 'The map could not fit. Try again.');console.error(error);});$('reset').onclick=()=>{viewportMotion.cancel();renderGeneration++;entranceController.abort();entranceController=new AbortController();demoTimers.forEach(clearTimeout);demoTimers=[];if(graphSocket?.readyState===WebSocket.OPEN){resetPending=true;renderEpoch++;graphSocket.send(JSON.stringify({type:'reset'}));uiMotion.clear([...$('transcript').children]);$('transcript').replaceChildren();uiMotion.status($('graph-help'), '');}};
 $('example').onclick=()=>{const phrases=['We are going to talk about three topics.','First design.','Second engineering.','Third launch.','For design, focus on accessibility and a clear visual hierarchy.'];$('example').disabled=true;phrases.forEach((text,i)=>demoTimers.push(setTimeout(()=>{if(sendThought(text))addTranscript(text);if(i===phrases.length-1)$('example').disabled=false;},i*2200)));};
 let voiceReady=false,starting=false,listening=false,player=null,voiceSocket=null,audioConfig={};
 function graphVoiceReady(){return graphSocket?.readyState===WebSocket.OPEN&&Boolean(graphSessionId);}

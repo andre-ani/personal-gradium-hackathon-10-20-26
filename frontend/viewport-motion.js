@@ -1,7 +1,7 @@
 import { animate } from 'motion';
 
 // G6 owns camera coordinates; Motion only interpolates between valid fits.
-export function createViewportMotion(graph, reducedMotion) {
+export function createViewportMotion(graph, reducedMotion, animateDriver = animate) {
   let stop = () => {};
   let generation = 0;
   const cancel = () => { generation++; stop(); };
@@ -19,11 +19,12 @@ export function createViewportMotion(graph, reducedMotion) {
       const to = { zoom: graph.getZoom(), position: graph.getPosition() };
       if (Math.abs(from.zoom - to.zoom) < .001 && from.position.every((v, i) => Math.abs(v - to.position[i]) < 1)) return;
       await graph.zoomTo(from.zoom, false);
+      if (current !== generation) return;
       await graph.translateTo(from.position, false);
       if (current !== generation) return;
-      let latest = 0, applied = -1, pending = null;
+      let latest = 0, applied = -1, pending = null, failure = null;
       const apply = () => {
-        if (pending) return;
+        if (pending || failure) return;
         pending = (async () => {
           while (current === generation && applied !== latest) {
             const progress = latest;
@@ -32,10 +33,13 @@ export function createViewportMotion(graph, reducedMotion) {
             if (current !== generation) return;
             await graph.translateTo(from.position.map((v, i) => v + (to.position[i] - v) * progress), false);
           }
-        })().finally(() => { pending = null; });
+        })().catch(error => {
+          failure = error;
+          stop();
+        }).finally(() => { pending = null; });
       };
       await new Promise(resolve => {
-        const controls = animate(0, 1, {
+        const controls = animateDriver(0, 1, {
           duration: .24, ease: [.22, 1, .36, 1],
           onUpdate: value => { latest = value; apply(); },
           onComplete: () => { latest = 1; apply(); resolve(); },
@@ -43,6 +47,7 @@ export function createViewportMotion(graph, reducedMotion) {
         stop = () => { controls.stop(); resolve(); };
       });
       if (pending) await pending;
+      if (failure) throw failure;
     },
     cancel,
     dispose() {
