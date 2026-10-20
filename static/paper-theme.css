@@ -431,3 +431,37 @@ a:focus-visible,
   .dock select { max-width: 78px; padding-left: 8px; }
   .audio-meter { gap: 2px; width: 23px; }
 }
+
+
+.speech-ribbon {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 12px);
+  width: 240px;
+  max-width: calc(100vw - 48px);
+  height: 42px;
+  transform: translateX(-50%);
+  overflow: hidden;
+  pointer-events: none;
+  color: var(--ink-deep);
+  text-align: left;
+  mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 4px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 4px), transparent);
+}
+
+
+.speech-word {
+  position: absolute;
+  left: 0;
+  top: 10px;
+  display: block;
+  max-width: 235px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 24px;
+  transform-origin: center bottom;
+}

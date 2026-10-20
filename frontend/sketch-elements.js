@@ -8,6 +8,7 @@
 import { Circle as GCircle, Path, Text as GText } from '@antv/g';
 import { BaseEdge, BaseNode, ExtensionCategory, register } from '@antv/g6';
 import { RoughGenerator } from 'roughjs/bin/generator.js';
+import { sketchEdgeRoute } from './edge-geometry.js';
 
 export const SKETCH_NODE_TYPE = 'sketch-rect';
 export const SKETCH_EDGE_TYPE = 'sketch-cubic-horizontal';
@@ -438,45 +439,34 @@ export class SketchNode extends BaseNode {
 export class SketchEdge extends BaseEdge {
   getArrowStyle(attributes, isStart) {
     const style = super.getArrowStyle(attributes, isStart);
+    const seed = seedFor(attributes, this.id || 'arrow');
+    const width = Math.max(2, Number(attributes.lineWidth || style.lineWidth || 2.7) * .85);
+    const head = cachedPaths(`arrow:${seed}:${width}`, () => generator.toPaths(generator.path(
+      `M8 -${6 + seed % 3} Q2 -3 -7 0 Q1 2 ${7 + seed % 2} 7`,
+      { ...roughOptions({ stroke: style.stroke, lineWidth: 2.2, roughness: 1.15, disableMultiStroke: true }, seed), maxRandomnessOffset: 1.4 },
+    )));
     const progress = attributes.drawProgress == null ? 1 : clamp(attributes.drawProgress);
-    return { ...style, opacity: progress < 1 ? 0 : (style.opacity ?? 1) };
+    return { ...style, d: pathData(head), width: attributes.edgeRole === 'primary' ? 18 : 14, height: attributes.edgeRole === 'primary' ? 17 : 13, fill: 'none', lineWidth: width, lineCap: 'round', lineJoin: 'round', opacity: clamp((progress - .72) / .28) };
   }
 
   getKeyPath(attributes) {
     const [source, target] = this.getEndpoints(attributes);
-    const [sx, sy] = source;
-    const [tx, ty] = target;
-    const bend = Math.max(24, Math.abs(tx - sx) * 0.42) * (tx >= sx ? 1 : -1);
-    return [['M', sx, sy], ['C', sx + bend, sy, tx - bend, ty, tx, ty]];
+    const seed = seedFor(attributes, this.id || `${attributes.source}:${attributes.target}`);
+    return graphEdgeRoute(this.context.graph, this.id, source, target, seed).path;
   }
 
   getKeyStyle(attributes) {
     const style = super.getKeyStyle(attributes);
-    // BaseEdge filters custom keys through Path.PARSED_STYLE_LIST. Keep a
-    // second view of the original attributes for Rough.js options and the
-    // transient entrance progress value.
     const rawStyle = this.getGraphicStyle(attributes);
     const [source, target] = this.getEndpoints(attributes);
-    const [sx, sy] = source;
-    const [tx, ty] = target;
-    const bend = Math.max(24, Math.abs(tx - sx) * 0.42) * (tx >= sx ? 1 : -1);
-    const d = `M${sx} ${sy} C${sx + bend} ${sy}, ${tx - bend} ${ty}, ${tx} ${ty}`;
-    const seed = seedFor(attributes, this.id || `${attributes.source || ''}:${attributes.target || ''}`);
-    const key = ['edge', seed, sx, sy, tx, ty, rawStyle.stroke, rawStyle.lineWidth, rawStyle.roughness, rawStyle.bowing].join('|');
-    const paths = cachedPaths(key, () => generator.toPaths(
-      // A single rough stroke keeps the reveal moving source → target. The
-      // default double pass can contain a reversed second pass, which makes
-      // a dash reveal appear to grow from both ends.
-      generator.path(d, roughOptions({ ...rawStyle, disableMultiStroke: true }, seed)),
-    ));
-    const pathLength = cubicLength(
-      [sx, sy],
-      [sx + bend, sy],
-      [tx - bend, ty],
-      [tx, ty],
-    );
-    const next = progressStyle({ ...style, d: pathData(paths) }, rawStyle.drawProgress, true, pathLength);
-    return { ...next, d: pathData(paths), fill: 'none' };
+    const seed = seedFor(attributes, this.id || `${attributes.source}:${attributes.target}`);
+    const route = graphEdgeRoute(this.context.graph, this.id, source, target, seed);
+    const lineWidth = Math.max(1.5, Number(rawStyle.lineWidth) || 2.7);
+    const key = ['gestural-edge', seed, route.d, rawStyle.stroke, lineWidth].join('|');
+    const paths = cachedPaths(key, () => generator.toPaths(generator.path(route.d, {
+      ...roughOptions({ ...rawStyle, lineWidth, roughness: 0.65, bowing: .4, disableMultiStroke: true }, seed), maxRandomnessOffset: 0.9,
+    })));
+    return { ...progressStyle({ ...style, lineWidth, strokeOpacity: rawStyle.strokeOpacity ?? .85, lineCap: 'round', lineJoin: 'round', d: pathData(paths) }, rawStyle.drawProgress, true, route.length), fill: 'none' };
   }
 
   drawKeyShape(attributes, container) {

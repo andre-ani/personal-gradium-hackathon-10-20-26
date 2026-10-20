@@ -3,9 +3,10 @@ import { mountMorphingControl } from './morphing-controls.js';
 import { paperNodeStyle } from './sketch-style.js';
 import { mountPaperBackground } from './paper-background.js';
 import { registerSketchElements } from './sketch-elements.js';
-import { drawSketchEntrance, animateSketchUpdates, resetSketchEntrance } from './sketch-motion.js';
+import { drawSketchEntrance, resetSketchEntrance } from './sketch-motion.js';
 import { createUIMotion } from './ui-motion.js';
 import { createViewportMotion } from './viewport-motion.js';
+import { createSpeechRibbon } from './speech-ribbon.js';
 registerSketchElements();
 mountPaperBackground();
 const $ = id => document.getElementById(id);
@@ -19,19 +20,18 @@ const conversationMorph = mountMorphingControl($('conversation-toggle'), {from:'
 const reducedMedia = matchMedia('(prefers-reduced-motion: reduce)');
 let reduced = reducedMedia.matches;
 const uiMotion = createUIMotion();
-const graph = new Graph({container:'graph',autoResize:true,padding:[100,60,140,60],animation:false,node:{type:'sketch-rect',style:datum=>({radius:12,labelPlacement:'center',labelFontFamily:'Figtree, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',labelFontSize:13,labelFill:'#174a9c',labelWordWrap:true,labelMaxLines:3,labelMaxWidth:148,shadowColor:'#173b6b14',shadowBlur:12,shadowOffsetY:4,...datum.style})},edge:{type:'sketch-cubic-horizontal',style:datum=>({stroke:'#2455a6',lineWidth:1.4,endArrow:false,...datum.style})},behaviors:['drag-canvas','zoom-canvas','drag-element']});
+const speechRibbon = createSpeechRibbon(document.querySelector('.dock'), () => reduced);
+const graph = new Graph({container:'graph',autoResize:true,padding:[88,64,132,64],animation:false,node:{type:'sketch-rect',style:datum=>({radius:12,labelPlacement:'center',labelFontFamily:'Figtree, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',labelFontSize:13,labelFill:'#174a9c',labelWordWrap:true,labelMaxLines:3,labelMaxWidth:148,shadowColor:'#173b6b14',shadowBlur:12,shadowOffsetY:4,...datum.style})},edge:{type:'sketch-cubic-horizontal',style:datum=>({stroke:'#2455a6',lineWidth:2.4,endArrow:true,...datum.style})},behaviors:['drag-canvas','zoom-canvas','drag-element']});
 const viewportMotion = createViewportMotion(graph, () => reduced);
 let graphSessionId=null, renderEpoch=0, resetPending=false;
 let entranceController = new AbortController();
-let renderGeneration = 0;
+let renderGeneration = 0, graphInitialized = false;
 let nodes=new Map(), edges=new Map(), positions=new Map(), slot=0, graphSocket, renderChain=Promise.resolve(), reconnectTimer, demoTimers=[];
 function position(n){if(positions.has(n.id))return positions.get(n.id);const parent=positions.get(n.parent_id);let p;if(parent){const siblings=[...nodes.values()].filter(v=>v.parent_id===n.parent_id);const i=siblings.findIndex(v=>v.id===n.id);p={x:parent.x+370,y:parent.y+((i%2?1:-1)*Math.ceil(i/2)*200)};while([...positions.values()].some(v=>Math.abs(v.x-p.x)<330&&Math.abs(v.y-p.y)<170))p.y+=200;}else{p={x:170,y:190+slot++*200};}positions.set(n.id,p);return p;}
 async function draw({ animate = false } = {}) {
   const signal = entranceController.signal;
   const previous = graph.getData();
   const existingNodes = new Set(previous.nodes.map(n => n.id));
-  const previousNodes = new Map(previous.nodes.map(n => [n.id, n.data]));
-  const changedNodes = animate ? [...nodes.values()].filter(n => previousNodes.has(n.id) && JSON.stringify(previousNodes.get(n.id)) !== JSON.stringify(n)).map(n => n.id) : [];
   const existingEdges = new Set(previous.edges.map(e => e.id));
   const addedNodes = animate ? [...nodes.keys()].filter(id => !existingNodes.has(id)) : [];
   const visibleEdges = [...edges.values()].filter(e => nodes.has(e.source) && nodes.has(e.target));
@@ -50,13 +50,14 @@ async function draw({ animate = false } = {}) {
   graph.setData({ nodes: dataNodes, edges: visibleEdges.map(e => ({ ...e, style: {
     ...e.style, drawProgress: !reduced && addedEdges.includes(e.id) ? 0 : 1,
   }})) });
-  await graph.render();
+  if (!graphInitialized) { await graph.render(); graphInitialized = true; }
+  else await graph.draw();
   updateEmpty(nodes.size === 0);
-  await Promise.all([
-    nodes.size ? viewportMotion.fit({ when: 'overflow', direction: 'both' }) : Promise.resolve(),
-    drawSketchEntrance(graph, { nodes: addedNodes, edges: addedEdges, reducedMotion: reduced, signal }),
-    animateSketchUpdates(graph, { nodes: changedNodes, reducedMotion: reduced, signal }),
-  ]);
+  // Camera motion can retarget while graph patches keep drawing.
+  if (nodes.size) void viewportMotion.fit({ when: 'overflow' }).catch(error => {
+    uiMotion.status($('graph-help'), 'The map could not reframe. Try Fit map.'); console.error(error);
+  });
+  await drawSketchEntrance(graph, { nodes: addedNodes, edges: addedEdges, reducedMotion: reduced, signal });
 }
 let semanticWorking = false, rendering = false, queueDepth = 0;
 function updateWork() {
@@ -117,6 +118,7 @@ function addTranscript(text, isUser = true, key) {
     el.append(small, document.createElement('span')); $('transcript').append(el);
   }
   el.lastElementChild.textContent += text + ' ';
+  speechRibbon.append(text, { speaker: isUser ? 'user' : 'assistant', turnId: key });
   uiMotion.transcript(el, { isNew });
   $('transcript').scrollTop = $('transcript').scrollHeight;
 }
@@ -163,7 +165,7 @@ document.addEventListener('keydown', event => {
   }
 });
 $('text-form').onsubmit=e=>{e.preventDefault();const text=$('thought').value.trim();if(text&&sendThought(text)){addTranscript(text);$('thought').value='';}};$('thought').onkeydown=e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))$('text-form').requestSubmit();};
-$('fit').onclick=()=>void viewportMotion.fit().catch(error=>{uiMotion.status($('graph-help'), 'The map could not fit. Try again.');console.error(error);});$('reset').onclick=()=>{viewportMotion.cancel();renderGeneration++;entranceController.abort();entranceController=new AbortController();demoTimers.forEach(clearTimeout);demoTimers=[];if(graphSocket?.readyState===WebSocket.OPEN){resetPending=true;renderEpoch++;graphSocket.send(JSON.stringify({type:'reset'}));uiMotion.clear([...$('transcript').children]);$('transcript').replaceChildren();uiMotion.status($('graph-help'), '');}};
+$('fit').onclick=()=>void viewportMotion.fit().catch(error=>{uiMotion.status($('graph-help'), 'The map could not fit. Try again.');console.error(error);});$('reset').onclick=()=>{speechRibbon.clear();viewportMotion.reset();renderGeneration++;entranceController.abort();entranceController=new AbortController();demoTimers.forEach(clearTimeout);demoTimers=[];if(graphSocket?.readyState===WebSocket.OPEN){resetPending=true;renderEpoch++;graphSocket.send(JSON.stringify({type:'reset'}));uiMotion.clear([...$('transcript').children]);$('transcript').replaceChildren();uiMotion.status($('graph-help'), '');}};
 $('example').onclick=()=>{const phrases=['We are going to talk about three topics.','First design.','Second engineering.','Third launch.','For design, focus on accessibility and a clear visual hierarchy.'];$('example').disabled=true;phrases.forEach((text,i)=>demoTimers.push(setTimeout(()=>{if(sendThought(text))addTranscript(text);if(i===phrases.length-1)$('example').disabled=false;},i*2200)));};
 let voiceReady=false,starting=false,listening=false,player=null,voiceSocket=null,audioConfig={};
 function graphVoiceReady(){return graphSocket?.readyState===WebSocket.OPEN&&Boolean(graphSessionId);}
@@ -173,12 +175,13 @@ function stopVoice(message){listening=false;starting=false;const socket=voiceSoc
 async function startVoice(){if(starting||listening||!voiceReady||!graphVoiceReady())return;starting=true;voiceUI();uiMotion.status($('notice'), '');try{player=new window.SyncedAudioPlayer({basePath:'/static/js',sampleRate:24000,pcmOutput:audioConfig.pcm||false,echoCancellation:true,onEncodedAudio:data=>{if(listening&&voiceSocket?.readyState===WebSocket.OPEN)voiceSocket.send(data);},onText:({text,turnIdx,isUser})=>{addTranscript(text,isUser,`${isUser?'u':'a'}${turnIdx}`);if(isUser)sendThought(text);},onError:error=>stopVoice(error.message||'Voice stopped. You can keep typing.')});const activePlayer=player;const sessionId=graphSessionId;await activePlayer.start();if(!starting||player!==activePlayer||!graphVoiceReady()||graphSessionId!==sessionId){activePlayer.stop();return;}voiceSocket=new WebSocket(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/ws/chat`);const socket=voiceSocket;socket.onopen=()=>{if(socket!==voiceSocket)return;socket.send(JSON.stringify({type:'start',graph_session_id:graphSessionId}));starting=false;listening=true;voiceUI();};socket.onmessage=e=>player?.handleMessage(e.data);socket.onerror=()=>stopVoice('Voice connection failed. You can keep typing.');socket.onclose=()=>{if(socket===voiceSocket)stopVoice('Voice disconnected. Your map is still here.');};}catch(e){stopVoice(e.name==='NotAllowedError'?'Allow microphone access to talk, or keep typing.':`Voice unavailable: ${e.message}`);}}
 $('mic').onclick=()=>listening?stopVoice():startVoice();
 async function readiness(){try{const [r,a]=await Promise.all([fetch('/api/readiness'),fetch('/api/audio-config')]);const ready=await r.json();audioConfig=await a.json();voiceReady=Boolean(ready.voice_ready)&&Boolean(window.SyncedAudioPlayer);if(!voiceReady)$('notice').textContent='Voice is not configured yet. Type a thought to start your map.';}catch{$('notice').textContent='Voice setup unavailable. You can still build your map with text.';}voiceUI();}
-window.addEventListener('pagehide',()=>{uiMotion.dispose();viewportMotion.dispose();reducedMedia.removeEventListener('change', reducedChanged);entranceController.abort();clearTimeout(reconnectTimer);demoTimers.forEach(clearTimeout);if(graphSocket){graphSocket.onclose=null;graphSocket.close();}stopVoice();});
+window.addEventListener('pagehide',()=>{speechRibbon.dispose();uiMotion.dispose();viewportMotion.dispose();reducedMedia.removeEventListener('change', reducedChanged);entranceController.abort();clearTimeout(reconnectTimer);demoTimers.forEach(clearTimeout);if(graphSocket){graphSocket.onclose=null;graphSocket.close();}stopVoice();});
 function reducedChanged() {
   reduced = reducedMedia.matches;
+  if (reduced) speechRibbon.reduce();
   viewportMotion.cancel();
   entranceController.abort(); entranceController = new AbortController();
   renderChain = renderChain.then(() => draw()).catch(console.error);
 }
 reducedMedia.addEventListener('change', reducedChanged);
-connectGraph();readiness();draw();uiMotion.intro();
+renderChain = draw();connectGraph();readiness();uiMotion.intro();
