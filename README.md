@@ -1,4 +1,5 @@
 > **Post-hackathon development** — this branch contains work after the submitted baseline.
+> [Open the separate post-hackathon preview](https://thread-post-hackathon-production.up.railway.app/).
 > Judges: use the [immutable Hackathon submission release](https://github.com/andre-ani/personal-gradium-hackathon-10-20-26/releases/tag/hackathon-submission) or the frozen `main` branch.
 > See [development boundaries](docs/post-hackathon.md) before deploying.
 

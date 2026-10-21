@@ -19,6 +19,15 @@ Use `post-hackathon`, based on the exact submission commit. The README banner la
 
 Run local previews with the existing commands in README.md. Secrets remain in the owner's original local `.env`; no secret values are copied into this branch or documentation.
 
-For hosted improvements, create a distinct development service or preview URL. A Vercel preview is not a verified voice runtime: the submitted code uses two WebSockets with shared in-memory state and was also packaged for a single Railway process. Preserve the framework and deployment requirements when preparing a future preview.
+The separate hosted development service is now configured:
+
+- Preview URL: https://thread-post-hackathon-production.up.railway.app/
+- Railway project: `thread-gradium`
+- Mutable development service: `thread-post-hackathon`
+- Deployment source: `andre-ani/personal-gradium-hackathon-10-20-26`, branch `post-hackathon`; pushes deploy automatically.
+- One Python instance, using the committed Dockerfile and wsproto. Provider credentials were copied privately from the submitted service; none are stored in Git.
+- The preview is labeled in its page title and a persistent badge.
+
+For other hosted improvements, use this development service or another distinct preview URL. A Vercel preview is not a verified voice runtime: the submitted code uses two WebSockets with shared in-memory state and was also packaged for a single Railway process. Preserve the framework and deployment requirements when preparing a future preview.
 
 The previous Vercel adaptation and original artwork edits remain in their existing dirty checkouts. This clean branch intentionally starts from the owner-selected baseline; reconcile any desired changes explicitly rather than copying them over wholesale.

@@ -19,3 +19,7 @@ The manual OpenWiki GitHub Actions workflow can refresh the repository wiki on d
 - Local previews are allowed. Before publishing improvements, use a separate preview deployment or development service and URL. Do not repoint a submitted URL.
 - Label later work as post-hackathon. Preserve actual timestamps; do not imply that new work was part of the submitted snapshot.
 - See `docs/post-hackathon.md` for the pinned version and judging URLs.
+
+### Active development deployment
+
+`thread-post-hackathon` in Railway project `thread-gradium` is the separate development service. It follows `post-hackathon` automatically and is available at https://thread-post-hackathon-production.up.railway.app/. Publishing to this branch deploys the development service; the submitted service named `thread` and both submitted URLs remain frozen. Target service IDs explicitly when using Railway; do not rely on a previously linked checkout's production service.
