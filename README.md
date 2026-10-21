@@ -1,3 +1,7 @@
+> **Post-hackathon development** — this branch contains work after the submitted baseline.
+> Judges: use the [immutable Hackathon submission release](https://github.com/andre-ani/personal-gradium-hackathon-10-20-26/releases/tag/hackathon-submission) or the frozen `main` branch.
+> See [development boundaries](docs/post-hackathon.md) before deploying.
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/header/graph.svg?title=Gradium+Live&amp;subtitle=Speak+an+idea.+Watch+the+graph+grow.&amp;align=left&amp;height=160&amp;theme=cyan&amp;mode=dark" />
