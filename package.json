@@ -12,6 +12,7 @@
     "@paper-design/shaders": "^0.0.81",
     "morphicons": "^2.0.0",
     "motion": "^14.4.0",
+    "mp4-muxer": "^5.2.2",
     "roughjs": "^4.6.6"
   },
   "devDependencies": {

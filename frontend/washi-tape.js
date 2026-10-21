@@ -1,4 +1,5 @@
 import { Path } from '@antv/g';
+import { PALETTE, PALETTE_KEYS } from './palette.js';
 
 /**
  * Draw the two small pieces of tape that are attached to a sketch node.
@@ -9,19 +10,37 @@ import { Path } from '@antv/g';
  * Every shape is node-local, pointer-transparent, and removed through the
  * same upsert keys when its progress reaches 0.
  *
- * @param {import('@antv/g6').BaseNode} node
- * @param {Record<string, any>} attributes
- * @param {import('@antv/g').Group} container
- * @returns {void}
+ * Optional attributes: `tapeDesign` (one of TAPE_DESIGNS; the scheduler
+ * picks one that differs from neighbouring cards), `decorationPalette` (the
+ * card's palette key, so the tape colours coordinate with it) and
+ * `tapeOpacity`. Without them the design and colours are seeded by node id.
  */
+
+/** Printed designs, in a stable order the scheduler can choose from. */
+export const TAPE_DESIGNS = Object.freeze([
+  'stripes-thin', 'stripes-wide', 'dots', 'gingham', 'stars', 'hearts',
+  'scallop', 'squiggle', 'fibre', 'two-tone',
+]);
+
+const CREAM = '#efe2c2';
+/**
+ * Pale base wash + one ink accent per tape, all from the shared palette.
+ * `cream` is a warm paper-tape base outside the card palette.
+ */
+export const TAPE_COMBOS = Object.freeze([
+  ['rose', 'ochre'], ['teal', 'green'], ['plum', 'rose'], ['blue', 'ochre'],
+  ['cream', 'terracotta'], ['green', 'teal'], ['ochre', 'blue'], ['slate', 'terracotta'],
+  ['cream', 'blue'], ['terracotta', 'teal'], ['rose', 'plum'], ['green', 'ochre'],
+  ['teal', 'terracotta'], ['blue', 'rose'], ['plum', 'ochre'], ['cream', 'green'],
+]);
 
 const TAPE_COUNT = 2;
 const TAPE_OPACITY = 0.58;
 const TAPE_Z_INDEX = 1.35;
-const TAPE_COLORS = ['#7f98a5', '#718b9a'];
-const TAPE_HIGHLIGHTS = ['#d7e3e6', '#d0dfe3'];
-const TAPE_PATTERN = '#174a9c';
 const TAPE_SHADOW = '#173b6b36';
+const BLEND = 'multiply';
+const CACHE_LIMIT = 400;
+const geometryCache = new Map();
 
 const clamp = (value, min = 0, max = 1) => Math.max(min, Math.min(max, Number(value) || 0));
 
@@ -47,6 +66,38 @@ function jitter(seed, index, amount) {
 function smoothstep(value) {
   const amount = clamp(value);
   return amount * amount * (3 - 2 * amount);
+}
+
+function mix(hex, toward, amount) {
+  const from = hex.match(/[0-9a-f]{2}/gi).map((part) => parseInt(part, 16));
+  const to = toward.match(/[0-9a-f]{2}/gi).map((part) => parseInt(part, 16));
+  return `#${from.map((value, index) => Math.round(value + (to[index] - value) * amount)
+    .toString(16).padStart(2, '0')).join('')}`;
+}
+
+const inkOf = (key) => (key === 'cream' ? CREAM : PALETTE[key].ink);
+
+/**
+ * Seeded tape colours that share a hue with the card's palette when known.
+ * Returns pale body tints for both strips plus the printed accent ink.
+ */
+export function tapeColours(seed, paletteKey) {
+  const matching = PALETTE_KEYS.includes(paletteKey)
+    ? TAPE_COMBOS.filter(([base, accent]) => base === paletteKey || accent === paletteKey)
+    : TAPE_COMBOS;
+  const [base, accent] = matching[hashSeed(`${seed}:combo`) % matching.length];
+  const body = base === 'cream' ? CREAM : mix(inkOf(base), '#ffffff', 0.5);
+  return {
+    combo: `${base}+${accent}`,
+    bodies: [body, base === 'cream' ? mix(CREAM, '#d9c79c', 0.25) : mix(inkOf(base), '#ffffff', 0.56)],
+    highlight: mix(body, '#ffffff', 0.7),
+    accent: inkOf(accent),
+    tone: mix(inkOf(accent), '#ffffff', 0.55),
+  };
+}
+
+export function tapeDesignFor(seed, requested) {
+  return TAPE_DESIGNS.includes(requested) ? requested : TAPE_DESIGNS[hashSeed(`${seed}:design`) % TAPE_DESIGNS.length];
 }
 
 function nodeSeed(node, attributes) {
@@ -76,8 +127,7 @@ function tapeSpec(index, width, height, seed) {
     centerY: (index === 0 ? -height / 2 : height / 2) + jitter(seed, 96 + index * 13, 4.5),
     // Opposite corners share the same rising diagonal: both tabs cross the
     // corner instead of the bottom one running along its lower edge.
-    rotation: -(17 + Math.abs(jitter(seed, 97 + index * 13, 30))),
-    pattern: (seed + index * 7) % 4,
+    rotation: -(11 + Math.abs(jitter(seed, 97 + index * 13, 34))),
   };
 }
 
@@ -91,6 +141,18 @@ function edgeY(spec, x, topEdge, seed, index, lift) {
   return base - lift * t * t + roughness;
 }
 
+/** Torn, zig-zag tape end between two edge points, as path commands. */
+function tornEnd(x, top, bottom, seed, salt, outward) {
+  const teeth = 3 + (seed + salt) % 2;
+  const points = [];
+  for (let step = 1; step < teeth * 2; step += 1) {
+    const t = step / (teeth * 2);
+    const depth = (step % 2 ? 1.9 : 0.2) + jitter(seed, salt + step, 0.6);
+    points.push(`L${x - outward * depth} ${top + (bottom - top) * t + jitter(seed, salt + step + 20, 0.5)}`);
+  }
+  return points;
+}
+
 function tapeBodyPath(spec, progress, seed, index) {
   const visibleWidth = spec.width * clamp(progress);
   if (visibleWidth <= 0) return '';
@@ -99,16 +161,23 @@ function tapeBodyPath(spec, progress, seed, index) {
   const right = left + visibleWidth;
   const lift = 3.1 * (1 - smoothstep(progress));
   const steps = Math.max(3, Math.ceil(visibleWidth / 11));
-  const path = [`M${left} ${edgeY(spec, left, true, seed, 41 + index * 31, lift)}`];
+  const leftTop = edgeY(spec, left, true, seed, 41 + index * 31, lift);
+  const leftBottom = edgeY(spec, left, false, seed, 73 + index * 31, lift);
+  const path = [`M${left} ${leftTop}`];
   for (let step = 1; step <= steps; step += 1) {
     const x = left + (visibleWidth * step) / steps;
     path.push(`L${x} ${edgeY(spec, x, true, seed, 41 + index * 31 + step, lift)}`);
   }
-  path.push(`L${right} ${edgeY(spec, right, false, seed, 73 + index * 31, lift)}`);
+  const rightTop = edgeY(spec, right, true, seed, 41 + index * 31 + steps, lift);
+  const rightBottom = edgeY(spec, right, false, seed, 73 + index * 31, lift);
+  // The far end is only torn once the strip is fully laid down.
+  if (progress >= 0.999) path.push(...tornEnd(right, rightTop, rightBottom, seed, 140 + index * 17, 1));
+  path.push(`L${right} ${rightBottom}`);
   for (let step = steps - 1; step >= 0; step -= 1) {
     const x = left + (visibleWidth * step) / steps;
     path.push(`L${x} ${edgeY(spec, x, false, seed, 73 + index * 31 + step, lift)}`);
   }
+  path.push(...tornEnd(left, leftBottom, leftTop, seed, 170 + index * 17, -1));
   return `${path.join(' ')} Z`;
 }
 
@@ -124,25 +193,116 @@ function starPath(x, y, radius) {
   }).join(' ') + 'Z';
 }
 
-function tapePatternPath(spec, progress, seed, index) {
-  const left = -spec.width / 2 + 3;
-  const right = -spec.width / 2 + spec.width * clamp(progress) - 3;
-  const spacing = 12 + (seed % 4);
-  const offset = (seed + index * 3) % 4;
-  const segments = [];
-  for (let x = left + 4.3 + offset, item = 0; x + 4.4 < right; x += spacing, item++) {
-    const y = (item % 2 ? 1 : -1) * Math.min(0.55, spec.height * 0.04);
-    if (spec.pattern === 0) {
-      segments.push(starPath(x, y, 4.3));
-    } else if (spec.pattern === 1) {
-      segments.push(circlePath(x, y, 2.9), circlePath(x + 5, -y, 1.25));
-    } else if (spec.pattern === 2) {
-      segments.push(`M${x - 2.8} ${y - 3}l5.6 5.2M${x + 4} ${-y - 2.5}l-2.4 4.5`);
-    } else {
-      segments.push(`M${x} ${y + 3.8}C${x - 7} ${y - 0.8} ${x - 3.7} ${y - 6.2} ${x} ${y - 2.6}C${x + 3.7} ${y - 6.2} ${x + 7} ${y - 0.8} ${x} ${y + 3.8}Z`);
-    }
+function heartPath(x, y, size) {
+  const s = size / 4;
+  return `M${x} ${y + 3.8 * s}C${x - 7 * s} ${y - 0.8 * s} ${x - 3.7 * s} ${y - 6.2 * s} ${x} ${y - 2.6 * s}C${x + 3.7 * s} ${y - 6.2 * s} ${x + 7 * s} ${y - 0.8 * s} ${x} ${y + 3.8 * s}Z`;
+}
+
+const rect = (x0, y0, x1, y1) => (x1 > x0 && y1 > y0 ? `M${x0} ${y0}H${x1}V${y1}H${x0}Z` : '');
+
+/** Clip a straight segment to a vertical band, so diagonal print stays on the tape. */
+function clippedLine(ax, ay, bx, by, minX, maxX) {
+  const dx = bx - ax;
+  let from = 0;
+  let to = 1;
+  if (Math.abs(dx) < 1e-6) {
+    if (ax < minX || ax > maxX) return '';
+  } else {
+    const t0 = (minX - ax) / dx;
+    const t1 = (maxX - ax) / dx;
+    from = Math.max(from, Math.min(t0, t1));
+    to = Math.min(to, Math.max(t0, t1));
   }
-  return { d: segments.join(' '), filled: spec.pattern !== 2 };
+  if (to <= from) return '';
+  return `M${ax + dx * from} ${ay + (by - ay) * from}L${ax + dx * to} ${ay + (by - ay) * to}`;
+}
+
+/**
+ * Printed layers for one strip: `print` in the accent ink and an optional
+ * softer `tone` fill. Coordinates are tape-local and stop at the visible end.
+ */
+export function tapePrint(design, spec, progress, seed, index) {
+  const left = -spec.width / 2 + 1.5;
+  const right = -spec.width / 2 + spec.width * clamp(progress) - 1.5;
+  const top = -spec.height / 2 + 1;
+  const bottom = spec.height / 2 - 1;
+  const h = bottom - top;
+  const offset = (seed + index * 3) % 5;
+  const print = [];
+  const tone = [];
+  let filled = true;
+  let lineWidth = 1.1;
+  if (right - left < 4) return { print: '', tone: '', filled, lineWidth };
+
+  if (design === 'stripes-thin') {
+    filled = false;
+    lineWidth = 0.9;
+    const spacing = 4.2 + (seed % 3) * 0.6;
+    for (let x = left - h + offset; x < right + h; x += spacing) {
+      print.push(clippedLine(x, bottom, x + h * 0.6, top, left, right));
+    }
+  } else if (design === 'stripes-wide') {
+    const band = h / 5;
+    for (let row = 0; row < 2; row += 1) {
+      const y = top + band * (row * 2 + 1) + jitter(seed, 300 + row, 0.3);
+      print.push(rect(left, y, right, y + band * 0.9));
+    }
+  } else if (design === 'dots') {
+    const spacing = 5.6 + (seed % 3) * 0.5;
+    for (let row = 0; row < 3; row += 1) {
+      const y = top + h * (row + 0.5) / 3;
+      for (let x = left + 2 + offset * 0.6 + (row % 2) * spacing / 2; x < right - 1.5; x += spacing) {
+        print.push(circlePath(x, y, 1.1 + (seed % 2) * 0.25));
+      }
+    }
+  } else if (design === 'gingham') {
+    const spacing = 5.2;
+    for (let x = left + offset * 0.5; x < right; x += spacing) print.push(rect(x, top, Math.min(right, x + 2.3), bottom));
+    for (let y = top + 1; y < bottom; y += spacing) tone.push(rect(left, y, right, Math.min(bottom, y + 2.3)));
+  } else if (design === 'stars' || design === 'hearts') {
+    const spacing = 11 + (seed % 4);
+    for (let x = left + 4.3 + offset, item = 0; x + 4.4 < right; x += spacing, item += 1) {
+      const y = (item % 2 ? 1 : -1) * Math.min(1.6, h * 0.1);
+      print.push(design === 'stars' ? starPath(x, y, 3.9) : heartPath(x, y, 3.6));
+    }
+  } else if (design === 'scallop') {
+    // A lace-like scalloped border along both long edges.
+    const radius = Math.max(1.6, h * 0.15);
+    for (let x = left + radius; x + radius <= right; x += radius * 2) {
+      print.push(`M${x - radius} ${top}A${radius} ${radius} 0 0 0 ${x + radius} ${top}Z`);
+      print.push(`M${x - radius} ${bottom}A${radius} ${radius} 0 0 1 ${x + radius} ${bottom}Z`);
+    }
+    for (let x = left + radius * 2; x < right - 1; x += radius * 4) print.push(circlePath(x, 0, 0.9));
+  } else if (design === 'squiggle') {
+    filled = false;
+    lineWidth = 1.25;
+    const amplitude = h * 0.2;
+    const period = 8 + (seed % 3);
+    const points = [];
+    for (let x = left; x <= right; x += 1.2) {
+      points.push(`${points.length ? 'L' : 'M'}${x} ${Math.sin((x + offset) / period * Math.PI * 2) * amplitude + jitter(seed, 400 + points.length, 0.25)}`);
+    }
+    print.push(points.join(''));
+  } else if (design === 'fibre') {
+    // Solid tape with a faint printed fibre texture.
+    filled = false;
+    lineWidth = 0.5;
+    const count = Math.ceil((right - left) / 2.2);
+    for (let item = 0; item < count; item += 1) {
+      const x = left + ((item * 2.2 + jitter(seed, 500 + item, 1.1)) % (right - left));
+      const y = top + 1 + Math.abs(jitter(seed, 600 + item, 0.5)) * 2 * (h - 2);
+      const length = 2.5 + Math.abs(jitter(seed, 700 + item, 2.5));
+      const angle = jitter(seed, 800 + item, 0.45);
+      print.push(clippedLine(x, y, x + Math.cos(angle) * length, y + Math.sin(angle) * length, left, right));
+    }
+  } else if (design === 'two-tone') {
+    filled = false;
+    lineWidth = 0.8;
+    const split = jitter(seed, 900 + index, h * 0.08);
+    tone.push(rect(left, split, right, bottom));
+    print.push(`M${left} ${split}L${right} ${split}`);
+  }
+  return { print: print.filter(Boolean).join(' '), tone: tone.filter(Boolean).join(' '), filled, lineWidth };
 }
 
 function freeEndPath(spec, progress, seed, index) {
@@ -173,13 +333,29 @@ function transformFor(spec, progress) {
   ];
 }
 
+function geometry(spec, progress, seed, index, design) {
+  // Settled cards redraw often (camera, layout); reuse their path strings.
+  const key = [seed, index, design, spec.width.toFixed(2), spec.height.toFixed(2), progress.toFixed(3)].join('|');
+  const cached = geometryCache.get(key);
+  if (cached) return cached;
+  const value = {
+    body: tapeBodyPath(spec, progress, seed, index),
+    pattern: tapePrint(design, spec, progress, seed, index),
+    end: freeEndPath(spec, progress, seed, index),
+  };
+  geometryCache.set(key, value);
+  if (geometryCache.size > CACHE_LIMIT) geometryCache.delete(geometryCache.keys().next().value);
+  return value;
+}
+
 function clearTape(node, container, index) {
   node.upsert(`washi-tape-${index}-body`, Path, false, container);
+  node.upsert(`washi-tape-${index}-tone`, Path, false, container);
   node.upsert(`washi-tape-${index}-pattern`, Path, false, container);
   node.upsert(`washi-tape-${index}-end`, Path, false, container);
 }
 
-function drawTape(node, container, spec, progress, opacity, seed, index) {
+function drawTape(node, container, spec, progress, opacity, seed, index, design, colours) {
   if (progress <= 0 || opacity <= 0 || !spec.width || !spec.height) {
     clearTape(node, container, index);
     return;
@@ -191,12 +367,13 @@ function drawTape(node, container, spec, progress, opacity, seed, index) {
     transform,
     pointerEvents: 'none',
     zIndex: TAPE_Z_INDEX,
+    blend: BLEND,
   };
-  const body = tapeBodyPath(spec, progress, seed, index);
+  const { body, pattern, end } = geometry(spec, progress, seed, index, design);
   node.upsert(`washi-tape-${index}-body`, Path, body ? {
     ...base,
     d: body,
-    fill: TAPE_COLORS[index],
+    fill: colours.bodies[index],
     fillOpacity: 0.82,
     stroke: 'none',
     opacity,
@@ -206,28 +383,36 @@ function drawTape(node, container, spec, progress, opacity, seed, index) {
     shadowOffsetY: 1.2 + 2.2 * peel,
   } : false, container);
 
-  const pattern = tapePatternPath(spec, progress, seed, index);
-  node.upsert(`washi-tape-${index}-pattern`, Path, pattern.d ? {
+  node.upsert(`washi-tape-${index}-tone`, Path, pattern.tone ? {
     ...base,
-    d: pattern.d,
-    fill: pattern.filled ? TAPE_PATTERN : 'none',
-    stroke: pattern.filled ? 'none' : TAPE_PATTERN,
-    lineWidth: 1.7,
-    lineCap: 'round',
-    opacity: Math.min(1, opacity * 1.6),
+    d: pattern.tone,
+    fill: colours.tone,
+    fillOpacity: 0.55,
+    stroke: 'none',
+    opacity,
   } : false, container);
 
-  const end = freeEndPath(spec, progress, seed, index);
+  node.upsert(`washi-tape-${index}-pattern`, Path, pattern.print ? {
+    ...base,
+    d: pattern.print,
+    fill: pattern.filled ? colours.accent : 'none',
+    stroke: pattern.filled ? 'none' : colours.accent,
+    lineWidth: pattern.lineWidth,
+    lineCap: 'round',
+    opacity: Math.min(1, opacity * (design === 'fibre' ? 0.9 : 1.4)),
+  } : false, container);
+
   node.upsert(`washi-tape-${index}-end`, Path, end ? {
     ...base,
     d: end,
-    fill: TAPE_HIGHLIGHTS[index],
+    fill: colours.highlight,
     fillOpacity: 0.26 + 0.12 * (1 - peel),
     stroke: 'none',
     opacity: opacity * 0.72,
     shadowColor: TAPE_SHADOW,
     shadowBlur: 2 + 2 * peel,
     shadowOffsetY: 1 + 1.4 * peel,
+    blend: 'source-over',
   } : false, container);
 }
 
@@ -244,12 +429,14 @@ export function drawWashiTape(node, attributes, container) {
   const [width, height] = sizeOf(node, attributes);
   const seed = nodeSeed(node, attributes);
   const opacity = clamp(dataValue(attributes, 'tapeOpacity', TAPE_OPACITY));
+  const design = tapeDesignFor(seed, dataValue(attributes, 'tapeDesign', ''));
+  const colours = tapeColours(seed, dataValue(attributes, 'decorationPalette', ''));
   for (let index = 0; index < TAPE_COUNT; index += 1) {
     const progress = clamp(dataValue(attributes, `tape${index + 1}Progress`, 0));
     if (!width || !height) {
       clearTape(node, container, index);
       continue;
     }
-    drawTape(node, container, tapeSpec(index, width, height, seed), progress, opacity, seed, index);
+    drawTape(node, container, tapeSpec(index, width, height, seed), progress, opacity, seed, index, design, colours);
   }
 }

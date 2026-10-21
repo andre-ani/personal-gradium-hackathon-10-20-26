@@ -1,4 +1,6 @@
 import { animate } from 'motion';
+import { PALETTE_KEYS, paletteColour } from './palette.js';
+import { TAPE_DESIGNS } from './washi-tape.js';
 
 const DEFAULT_STAGE_1_MS = 12_000;
 const DEFAULT_STAGE_2_MS = 35_000;
@@ -6,6 +8,59 @@ const DEFAULT_ADDITION_SPACING_MS = 6_000;
 const DEFAULT_TICK_MS = 1_000;
 const DEFAULT_ANIMATION_MS = 700;
 const DEFAULT_MAX_NODES = 6;
+
+// The server accepts exactly these kinds (graph_engine.DECORATION_KINDS).
+// Washi tape is the only two-stage decoration; doodles finish in one stage.
+export const DECORATION_TYPES = Object.freeze(['washi_tape', 'stars', 'sparkle', 'heart', 'burst', 'underline', 'circle']);
+const RECENT_TYPES = 2;
+// A harmonious second ink per card colour, used by some corner doodles.
+const ACCENTS = Object.freeze({
+  blue: 'ochre', teal: 'terracotta', green: 'ochre', ochre: 'blue',
+  terracotta: 'teal', rose: 'plum', plum: 'rose', slate: 'terracotta',
+});
+
+function hashSeed(value) {
+  const text = String(value ?? 'decoration');
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) || 1;
+}
+
+/** Seeded, stable preference order of decoration types for one card. */
+export function decorationPreference(id, types = DECORATION_TYPES) {
+  const order = [...types];
+  let seed = hashSeed(`${id}:decoration`);
+  for (let index = order.length - 1; index > 0; index -= 1) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const pick = seed % (index + 1);
+    [order[index], order[pick]] = [order[pick], order[index]];
+  }
+  return order;
+}
+
+/**
+ * Pick the card's first preferred type that its decorated neighbours and the
+ * most recent additions do not already use.
+ */
+export function chooseDecoration(id, avoid = [], recent = [], types = DECORATION_TYPES) {
+  const order = decorationPreference(id, types);
+  const blocked = new Set([...avoid, ...recent]);
+  return order.find((type) => !blocked.has(type))
+    || order.find((type) => !recent.includes(type))
+    || order[0];
+}
+
+/** Ink for a doodle: the card's palette ink, sometimes a palette accent. */
+export function decorationInk(node, type, id = nodeId(node)) {
+  const raw = valueOf(node, 'palette');
+  const key = PALETTE_KEYS.includes(raw) ? raw : 'blue';
+  const accentable = ['stars', 'sparkle', 'heart', 'burst'].includes(type);
+  const useAccent = accentable && hashSeed(`${id}:${type}:ink`) % 3 === 0;
+  return paletteColour(useAccent ? ACCENTS[key] : key).ink;
+}
 
 const TEXT_FIELDS = ['label', 'heading', 'title', 'body', 'description'];
 const FINGERPRINT_FIELDS = ['label', 'heading', 'title', 'body', 'description', 'kind', 'status'];
@@ -115,8 +170,9 @@ function readRevision(source, id, fallback) {
 }
 
 /**
- * Wait for a node's meaning to settle before adding the two washi strips that
- * make the paper feel collected over time. The graph remains the owner of
+ * Wait for a node's meaning to settle before adding one seeded decoration
+ * (two washi strips, or a single ink doodle) so the paper feels collected
+ * over time. Neighbouring cards avoid repeating a type. The graph owns
  * rendering; this module only owns decoration state and serialized updates.
  */
 export function createStableDecorations(graph, options = {}) {
@@ -154,6 +210,8 @@ export function createStableDecorations(graph, options = {}) {
     ? options.isReady
     : (typeof options.ready === 'function' ? options.ready : () => true);
   const runExclusive = typeof options.runExclusive === 'function' ? options.runExclusive : null;
+  const requestedTypes = Array.isArray(options.types) ? options.types.filter((type) => DECORATION_TYPES.includes(type)) : [];
+  const types = requestedTypes.length ? requestedTypes : DECORATION_TYPES;
 
   const onApplied = typeof options.onApplied === 'function' ? options.onApplied : () => {};
   const onError = typeof options.onError === 'function'
@@ -170,6 +228,9 @@ export function createStableDecorations(graph, options = {}) {
   let currentRenderedRevision;
   let lastAdditionAt = Number.NEGATIVE_INFINITY;
   let activeJob = null;
+  let neighbours = new Map();
+  let recentTypes = [];
+  let recentDesigns = [];
 
   // There is one graph draw pump for all tape frames. Each node has at most
   // one pending patch, so a slow G6 draw cannot create an unbounded backlog.
@@ -280,7 +341,7 @@ export function createStableDecorations(graph, options = {}) {
       if (!live.length) continue;
       try {
         if (typeof graph?.updateNodeData !== 'function') throw new Error('Stable decorations require graph.updateNodeData().');
-        graph.updateNodeData(live.map((entry) => ({ id: entry.id, style: { [entry.key]: entry.value } })));
+        graph.updateNodeData(live.map((entry) => ({ id: entry.id, style: entry.style })));
         if (typeof graph?.draw !== 'function') throw new Error('Stable decorations require graph.draw().');
         await graph.draw();
         for (const entry of live) entry.job.lastDrawnValue = entry.value;
@@ -310,7 +371,7 @@ export function createStableDecorations(graph, options = {}) {
     const clamped = clamp(value);
     state[job.key] = clamped;
     if (job.lastDrawnValue === clamped && !pendingStyles.has(job.id)) return Promise.resolve(true);
-    pendingStyles.set(job.id, { id: job.id, key: job.key, value: clamped, state, job });
+    pendingStyles.set(job.id, { id: job.id, key: job.key, value: clamped, style: styleOf(state), state, job });
     return ensureFlush();
   }
 
@@ -350,6 +411,7 @@ export function createStableDecorations(graph, options = {}) {
       level: job.level,
       node_revision: job.nodeRevision,
       rendered_revision: getRenderedRevision(),
+      decoration: state.type,
     };
     const eventKey = `${job.id}\u0000${String(event.node_revision)}\u0000${job.level}`;
     if (state.appliedEvents.has(eventKey)) return;
@@ -405,11 +467,31 @@ export function createStableDecorations(graph, options = {}) {
     schedule();
   }
 
+  function neighbourValues(id, field) {
+    const values = [];
+    for (const other of neighbours.get(id) || []) {
+      const neighbour = states.get(other);
+      if (neighbour?.[field] != null && (neighbour.applied1 || neighbour.inFlight)) values.push(neighbour[field]);
+    }
+    return values;
+  }
+
+  function assignDecoration(state) {
+    if (state.type) return;
+    state.type = chooseDecoration(state.id, neighbourValues(state.id, 'type'), recentTypes, types);
+    if (state.type === 'washi_tape') {
+      state.design = chooseDecoration(`${state.id}:tape`, neighbourValues(state.id, 'design'), recentDesigns, TAPE_DESIGNS);
+      recentDesigns = [...recentDesigns, state.design].slice(-RECENT_TYPES);
+    }
+    recentTypes = [...recentTypes, state.type].slice(-RECENT_TYPES);
+  }
+
   function startStage(state, level) {
+    if (level === 1) assignDecoration(state);
     const job = {
       id: state.id,
       level,
-      key: level === 1 ? 'tape1Progress' : 'tape2Progress',
+      key: state.type !== 'washi_tape' ? 'decorationProgress' : (level === 1 ? 'tape1Progress' : 'tape2Progress'),
       state,
       fingerprint: state.fingerprint,
       epoch,
@@ -461,6 +543,10 @@ export function createStableDecorations(graph, options = {}) {
     return completion;
   }
 
+  function needsSecond(state) {
+    return state.type === 'washi_tape' && state.applied1 && !state.applied2;
+  }
+
   function decoratedCount() {
     let count = 0;
     for (const state of states.values()) {
@@ -475,7 +561,7 @@ export function createStableDecorations(graph, options = {}) {
     for (const state of states.values()) {
       if (!state.eligible || state.inFlight) continue;
       const elapsed = at - state.lastChange;
-      if (state.applied1 && !state.applied2 && elapsed >= stage2Ms
+      if (needsSecond(state) && elapsed >= stage2Ms
         && at - lastAdditionAt >= additionSpacingMs) {
         result.push({ state, level: 2 });
       } else if (!state.applied1 && activeCount < maxDecoratedNodes && elapsed >= stage1Ms
@@ -498,7 +584,7 @@ export function createStableDecorations(graph, options = {}) {
     const activeCount = decoratedCount();
     for (const state of states.values()) {
       if (!state.eligible) continue;
-      if (state.applied1 && !state.applied2) return true;
+      if (needsSecond(state)) return true;
       if (!state.applied1 && activeCount < maxDecoratedNodes) return true;
     }
     return false;
@@ -548,6 +634,10 @@ export function createStableDecorations(graph, options = {}) {
       if (id) nextNodes.set(id, node);
     }
     const edgeMap = edgeSignatures(edges);
+    neighbours = new Map();
+    for (const [id, list] of edgeMap) {
+      neighbours.set(id, new Set(list.flatMap((edge) => [edge.source, edge.target]).filter((other) => other !== id)));
+    }
     if (Object.prototype.hasOwnProperty.call(metadata, 'nodeRevisions')) currentNodeRevisions = metadata.nodeRevisions;
     if (Object.prototype.hasOwnProperty.call(metadata, 'renderedRevision')) currentRenderedRevision = metadata.renderedRevision;
 
@@ -573,6 +663,9 @@ export function createStableDecorations(graph, options = {}) {
           eligible: eligibleNode(node),
           tape1Progress: 0,
           tape2Progress: 0,
+          decorationProgress: 0,
+          type: null,
+          design: null,
           applied1: false,
           applied2: false,
           inFlight: null,
@@ -588,12 +681,23 @@ export function createStableDecorations(graph, options = {}) {
     schedule();
   }
 
-  function styleFor(id) {
-    const state = states.get(String(id));
+  function styleOf(state) {
+    const type = state?.type || '';
+    const palette = valueOf(state?.node, 'palette');
     return {
       tape1Progress: state ? clamp(state.tape1Progress) : 0,
       tape2Progress: state ? clamp(state.tape2Progress) : 0,
+      decorationType: type,
+      decorationProgress: state ? clamp(state.decorationProgress) : 0,
+      decorationInk: type ? decorationInk(state.node, type, state.id) : '',
+      decorationPalette: PALETTE_KEYS.includes(palette) ? palette : '',
+      tapeDesign: state?.design || '',
     };
+  }
+
+  /** Node style for the next render; zeros clear any previous decoration. */
+  function styleFor(id) {
+    return styleOf(states.get(String(id)));
   }
 
   function reset() {
@@ -607,6 +711,8 @@ export function createStableDecorations(graph, options = {}) {
     states = new Map();
     pendingStyles.clear();
     lastAdditionAt = Number.NEGATIVE_INFINITY;
+    recentTypes = [];
+    recentDesigns = [];
     if (!drawPromise) schedule();
   }
 

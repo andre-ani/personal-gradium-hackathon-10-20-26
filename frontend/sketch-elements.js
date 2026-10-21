@@ -1,4 +1,5 @@
 import { drawWashiTape } from './washi-tape.js';
+import { drawDoodleDecoration } from './doodle-decorations.js';
 /**
  * The graph's hand-drawn layer.
  *
@@ -9,8 +10,15 @@ import { drawWashiTape } from './washi-tape.js';
 import { Circle as GCircle, Path, Text as GText } from '@antv/g';
 import { BaseEdge, BaseNode, ExtensionCategory, register } from '@antv/g6';
 import { RoughGenerator } from 'roughjs/bin/generator.js';
+import { inkArrowPath, sketchEdgeScale } from './edge-geometry.js';
 import { graphEdgeRoute } from './graph-edge-routes.js';
 import { paperTexturePattern } from './note-paper.js';
+import {
+  CARD_GROW, CardWords, chooseCardLayout, easeGrow, iconFrame, layoutCard, measureText, startTicking, stopTicking,
+} from './card-text.js';
+
+const reducedMotionQuery = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
+const prefersReducedMotion = () => Boolean(reducedMotionQuery?.matches);
 
 export const SKETCH_NODE_TYPE = 'sketch-rect';
 export const SKETCH_EDGE_TYPE = 'sketch-cubic-horizontal';
@@ -104,35 +112,64 @@ function jitter(seed, index, amount) {
   return (value - Math.floor(value)) * amount * 2 - amount;
 }
 
+// One hand-cut edge from a to b: a gentle seeded bow plus a smaller wave,
+// drawn as two quadratic segments so the paper never looks ruled.
+function wavyEdge(a, b, seed, index) {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const length = Math.hypot(dx, dy) || 1;
+  const nx = -dy / length;
+  const ny = dx / length;
+  const scale = Math.min(1, length / 160);
+  const bow = jitter(seed, index, 2.6) * scale;
+  const waveA = jitter(seed, index + 1, 1.8) * scale;
+  const waveB = jitter(seed, index + 2, 1.8) * scale;
+  const t = 0.5 + jitter(seed, index + 3, 0.08);
+  const at = (f, offset) => `${(a[0] + dx * f + nx * offset).toFixed(2)} ${(a[1] + dy * f + ny * offset).toFixed(2)}`;
+  return `Q${at(t / 2, bow + waveA)} ${at(t, bow)} Q${at((1 + t) / 2, bow + waveB)} ${b[0].toFixed(2)} ${b[1].toFixed(2)}`;
+}
+
 function irregularPaperPath(x, y, width, height, radius, seed, paperCurl = 0) {
   const r = Math.max(2, Math.min(radius || 10, Math.min(width, height) / 2));
-  const topLeft = r + jitter(seed, 1, 2.4);
-  const topRight = r + jitter(seed, 2, 2.2);
-  const bottomRight = r + jitter(seed, 3, 2.4);
-  const bottomLeft = r + jitter(seed, 4, 2.2);
+  // Corners differ per card; one of them is cut noticeably rounder.
+  const soft = seed % 4;
+  const corner = (index) => Math.max(1.5, r * (0.55 + Math.abs(jitter(seed, 40 + index, 0.9)))
+    + (index === soft ? 6 + Math.abs(jitter(seed, 44, 4)) : 0));
+  const [topLeft, topRight, bottomRight, bottomLeft] = [0, 1, 2, 3].map(corner);
   const curl = clamp(paperCurl);
   const curlSize = curl
     ? Math.min(24, Math.max(10, Math.min(width, height) * (0.08 + curl * 0.08)))
     : 0;
+  const point = (px, py, index, amount = 1.4) => [px + jitter(seed, index, amount), py + jitter(seed, index + 50, amount)];
+  const tl = point(x, y, 1);
+  const tr = point(x + width, y, 2);
+  // A curled note shares its corner with the curl face drawn on top.
+  const br = curlSize
+    ? [x + width + jitter(seed, 35, 1.8) * curl, y + height + jitter(seed, 36, 1.4) * curl]
+    : point(x + width, y + height, 3);
+  const bl = point(x, y + height, 4);
+  const pt = (p) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`;
+  const topStart = [tl[0] + topLeft, tl[1]];
+  const topEnd = [tr[0] - topRight, tr[1]];
+  const rightStart = [tr[0], tr[1] + topRight];
+  const rightEnd = [br[0], br[1] - (curlSize || bottomRight)];
+  const bottomStart = [br[0] - (curlSize || bottomRight), br[1]];
+  const bottomEnd = [bl[0] + bottomLeft, bl[1]];
+  const leftStart = [bl[0], bl[1] - bottomLeft];
+  const leftEnd = [tl[0], tl[1] + topLeft];
   const rightCorner = curlSize
-    ? [
-      `L${x + width + jitter(seed, 10, 1.2)} ${y + height - curlSize}`,
-      `Q${x + width + jitter(seed, 11, 1.8)} ${y + height - curlSize * 0.16} ${x + width - curlSize * 0.45} ${y + height + jitter(seed, 12, 1.6)}`,
-      `Q${x + width - curlSize * 0.7} ${y + height + jitter(seed, 13, 1.2)} ${x + width - curlSize} ${y + height + jitter(seed, 14, 1.2)}`,
-    ]
-    : [
-      `L${x + width + jitter(seed, 10, 1.2)} ${y + height - bottomRight}`,
-      `Q${x + width + jitter(seed, 11, 1.8)} ${y + height + jitter(seed, 12, 1.6)} ${x + width - bottomRight} ${y + height + jitter(seed, 13, 1.2)}`,
-    ];
+    ? `Q${pt([br[0] + jitter(seed, 11, 1.8), br[1] - curlSize * 0.16])} ${pt([br[0] - curlSize * 0.45, br[1] + jitter(seed, 12, 1.6)])} Q${pt([br[0] - curlSize * 0.7, br[1] + jitter(seed, 13, 1.2)])} ${pt(bottomStart)}`
+    : `Q${pt(br)} ${pt(bottomStart)}`;
   return [
-    `M${x + topLeft} ${y + jitter(seed, 5, 1.2)}`,
-    `L${x + width - topRight} ${y + jitter(seed, 6, 1.2)}`,
-    `Q${x + width + jitter(seed, 7, 1.8)} ${y + jitter(seed, 8, 1.6)} ${x + width + jitter(seed, 9, 1.2)} ${y + bottomRight}`,
-    ...rightCorner,
-    `L${x + bottomLeft} ${y + height + jitter(seed, 14, 1.2)}`,
-    `Q${x + jitter(seed, 15, 1.8)} ${y + height + jitter(seed, 16, 1.6)} ${x + jitter(seed, 17, 1.2)} ${y + height - bottomLeft}`,
-    `L${x + jitter(seed, 18, 1.2)} ${y + topLeft}`,
-    `Q${x + jitter(seed, 19, 1.8)} ${y + jitter(seed, 20, 1.6)} ${x + topLeft} ${y + jitter(seed, 21, 1.2)}Z`,
+    `M${pt(topStart)}`,
+    wavyEdge(topStart, topEnd, seed, 60),
+    `Q${pt(tr)} ${pt(rightStart)}`,
+    wavyEdge(rightStart, rightEnd, seed, 64),
+    rightCorner,
+    wavyEdge(bottomStart, bottomEnd, seed, 68),
+    `Q${pt(bl)} ${pt(leftStart)}`,
+    wavyEdge(leftStart, leftEnd, seed, 72),
+    `Q${pt(tl)} ${pt(topStart)}Z`,
   ].join(' ');
 }
 
@@ -220,7 +257,7 @@ function roughOptions(style, seed, { fill = false } = {}) {
     seed,
     roughness: Number(style.roughness ?? 0.72),
     bowing: Number(style.bowing ?? 0.55),
-    stroke: style.stroke || '#2455a6',
+    stroke: style.stroke || '#1c4690',
     strokeWidth: Number(style.lineWidth ?? 1.25),
     fill: fill ? style.fill || '#faf8f1' : 'none',
     fillStyle: style.fillStyle || 'solid',
@@ -232,7 +269,7 @@ function roughOptions(style, seed, { fill = false } = {}) {
 
 function effectiveNodeStroke(style) {
   const stroke = style.stroke;
-  return stroke && stroke !== 'transparent' && stroke !== 'none' ? stroke : '#2455a64d';
+  return stroke && stroke !== 'transparent' && stroke !== 'none' ? stroke : '#1c46904d';
 }
 
 function progressStyle(style, progress, isEdge, pathLength = 1000) {
@@ -243,6 +280,8 @@ function progressStyle(style, progress, isEdge, pathLength = 1000) {
   if (isEdge && amount < 1) {
     next.lineDash = [Math.max(0, amount * pathLength), pathLength * 2];
     next.lineDashOffset = 0;
+    // A zero-length dash still paints its round cap as a dot; hide undrawn edges.
+    if (amount <= 0) next.strokeOpacity = 0;
   }
   if (!isEdge && style.drawProgress != null && amount < 1) {
     next.lineDash = [Math.max(0, amount * pathLength), pathLength * 2];
@@ -250,6 +289,12 @@ function progressStyle(style, progress, isEdge, pathLength = 1000) {
     next.fillOpacity = amount;
   }
   return next;
+}
+
+function iconTilt(id) {
+  let hash = 2166136261;
+  for (const ch of `icon:${id}`) { hash ^= ch.charCodeAt(0); hash = Math.imul(hash, 16777619); }
+  return ((hash >>> 0) / 4294967295) * 14 - 7;
 }
 
 export class SketchNode extends BaseNode {
@@ -313,7 +358,10 @@ export class SketchNode extends BaseNode {
     return { ...style, opacity: clamp(progress) * (style.opacity ?? 1) };
   }
 
-  drawKeyShape(attributes, container) {
+  drawKeyShape(sourceAttributes, container) {
+    // Paper, shadow and decorations draw at the eased on-screen size; G6 data
+    // keeps the target size so routing and placement see it immediately.
+    const attributes = this.shownCardAttributes(sourceAttributes);
     const style = super.getKeyStyle(attributes);
     const variant = nodeVariant(attributes);
     const [width, height] = this.getSize(attributes);
@@ -345,7 +393,7 @@ export class SketchNode extends BaseNode {
     this.upsert('paper-texture', Path, {
       d: surfacePath,
       fill: paperTexturePattern(seed),
-      fillOpacity: progress * (style.paperTextureOpacity ?? 0.78),
+      fillOpacity: progress * (style.paperTextureOpacity ?? 0),
       stroke: 'none',
       pointerEvents: 'none',
       zIndex: 1,
@@ -356,10 +404,10 @@ export class SketchNode extends BaseNode {
       cx: inkBleed.cx,
       cy: inkBleed.cy,
       r: inkBleed.radius,
-      fill: style.inkBleedColor || '#2455a6',
+      fill: style.inkBleedColor || '#1c4690',
       fillOpacity: style.inkBleedFillOpacity ?? 0.2,
       opacity: progress * (style.inkBleedOpacity ?? 0.65),
-      shadowColor: style.inkBleedShadowColor || '#2455a670',
+      shadowColor: style.inkBleedShadowColor || '#1c469070',
       shadowBlur: inkBleed.blur,
       shadowOffsetX: inkBleed.offsetX,
       shadowOffsetY: inkBleed.offsetY,
@@ -427,107 +475,157 @@ export class SketchNode extends BaseNode {
     // version of the note renderer. The curl has no colored crease or border.
     this.upsert('fold', Path, false, container);
 
-    const headingText = String(dataValue(attributes, 'headingText', '') || '').trim();
-    const bodyText = String(dataValue(attributes, 'bodyText', '') || '').trim();
-    const headingSize = variant === 'anchor' ? 30 : 24;
-    const headingFontSize = Number(style.headingFontSize ?? headingSize);
-    const headingY = y + padding;
-    const headingLineHeight = Number(style.headingLineHeight ?? headingFontSize + 2);
-    const bodyLineHeight = Number(style.bodyLineHeight ?? 19);
-    const maxHeadingLines = bodyText
-      ? Math.max(1, Math.min(2, Math.floor((height - padding * 2 - bodyLineHeight - 6) / headingLineHeight)))
-      : 2;
     const textColor = style.textColor || dataValue(attributes, 'labelFill') || '#173b6b';
+    this.drawCardText(attributes, style, { variant, padding, progress, textColor, origin: [x, y] }, container);
+    // This is an absolute local scale, so repeated graph updates never
+    // compound the lift. The element origin is the node center; x/y data and
+    // the key shape remain the source of truth for layout and hit testing.
+    drawWashiTape(this, attributes, container);
+    drawDoodleDecoration(this, attributes, container);
+    this.setLocalScale(liftScale, liftScale, 1);
+    // A seeded tilt of at most 1.5 degrees: cut paper never sits square.
+    this.setLocalEulerAngles?.(jitter(seed, 90, 1.5));
+    return key;
+  }
+
+  /** Attributes with the on-screen size, which eases toward the G6 size. */
+  shownCardAttributes(attributes) {
+    this._cardSource = attributes;
+    const target = this.getSize(attributes);
+    const time = performance.now();
+    const motion = this._sizeMotion;
+    if (!motion) this._sizeMotion = { from: target, to: target, start: time };
+    else if (motion.to[0] !== target[0] || motion.to[1] !== target[1]) {
+      const shown = this.shownSize(time);
+      this._sizeMotion = { from: prefersReducedMotion() ? target : shown, to: target, start: time };
+      this.startCardMotion();
+    }
+    const shown = this.shownSize(time);
+    this._cardTarget = target;
+    return shown[0] === target[0] && shown[1] === target[1] ? attributes : { ...attributes, size: shown };
+  }
+
+  shownSize(time) {
+    const { from, to, start } = this._sizeMotion;
+    const progress = Math.min(1, Math.max(0, (time - start) / CARD_GROW.duration));
+    if (progress >= 1) return to;
+    const eased = easeGrow(progress);
+    return [0, 1].map((index) => Math.round((from[index] + (to[index] - from[index]) * eased) * 2) / 2);
+  }
+
+  /** Redraws the paper every frame while the size or icon is still moving. */
+  startCardMotion() {
+    this._cardTicker ??= {
+      tick: (time) => {
+        if (this.destroyed) return false;
+        this.drawKeyShape(this._cardSource, this);
+        const sizeMoving = time - this._sizeMotion.start < CARD_GROW.duration;
+        const iconMoving = this._iconMotion && time - this._iconMotion.start < CARD_GROW.duration;
+        return sizeMoving || iconMoving;
+      },
+    };
+    startTicking(this._cardTicker);
+  }
+
+  drawCardText(attributes, style, { variant, padding, progress, textColor, origin }, container) {
+    // Single-text shapes from earlier renderer versions.
+    this.upsert('heading', GText, false, container);
+    this.upsert('body', GText, false, container);
+    const heading = String(dataValue(attributes, 'headingText', '') || '').trim();
+    const body = String(dataValue(attributes, 'bodyText', '') || '').trim();
     const icons = sketchIcons(attributes);
-    const iconOffset = icons.length ? 34 : 0;
-    const iconSize = Number(style.iconSize ?? 22);
-    const iconTransform = [['translate', x + padding, y + padding], ['scale', iconSize / 24, iconSize / 24]];
+    const [width, height] = this._cardTarget || this.getSize(attributes);
+    const headingFont = {
+      size: Number(style.headingFontSize ?? (variant === 'anchor' ? 30 : 24)),
+      family: style.headingFontFamily || 'Patrick Hand, Comic Sans MS, cursive',
+      weight: style.headingFontWeight ?? (variant === 'anchor' ? 500 : 400),
+    };
+    const bodyFont = {
+      size: Number(style.bodyFontSize ?? 13),
+      family: style.bodyFontFamily || 'Patrick Hand, cursive',
+      weight: style.bodyFontWeight ?? 400,
+    };
+    const bodyLineHeight = style.bodyLineHeight == null ? undefined : Number(style.bodyLineHeight);
+    const layoutKey = JSON.stringify([heading, body, icons.length > 0, width, height, padding, headingFont, bodyFont, bodyLineHeight]);
+    if (layoutKey !== this._cardLayoutKey) {
+      const mode = chooseCardLayout({ heading, body, previous: this._cardLayout?.mode });
+      this._cardLayout = layoutCard({
+        width, height, padding, mode, heading, body, hasIcon: icons.length > 0, headingFont, bodyFont, bodyLineHeight, measure: measureText,
+      });
+      this._cardLayoutKey = layoutKey;
+    }
+    const layout = this._cardLayout;
+    const time = performance.now();
+    const opacity = progress * (style.textOpacity ?? .86);
+
+    // Icon: glides (with a soft fade) to its new layout slot instead of jumping.
+    const iconTarget = layout.icon;
+    const iconMotion = this._iconMotion;
+    let icon = iconTarget;
+    if (iconTarget && iconMotion?.to && !prefersReducedMotion()
+      && (iconMotion.to.x !== iconTarget.x || iconMotion.to.y !== iconTarget.y || iconMotion.to.size !== iconTarget.size)) {
+      const current = iconFrame(iconMotion.from, iconMotion.to, Math.min(1, (time - iconMotion.start) / CARD_GROW.duration));
+      this._iconMotion = { from: current, to: iconTarget, start: time };
+      this.startCardMotion();
+    } else if (!iconMotion || !iconTarget || !iconMotion.to || prefersReducedMotion()) {
+      this._iconMotion = { from: iconTarget, to: iconTarget, start: 0 };
+    }
+    if (iconTarget) icon = iconFrame(this._iconMotion.from, this._iconMotion.to, Math.min(1, (time - this._iconMotion.start) / CARD_GROW.duration));
+    const iconFill = style.iconFill || textColor;
     const previousIconCount = this._sketchIconCount || 0;
     for (let index = 0; index < Math.max(previousIconCount, icons.length); index += 1) {
-      const icon = icons[index];
-      this.upsert(`icon-${index}`, Path, icon ? {
-        d: icon.d,
-        fill: icon.fill === 'currentColor'
-          ? (style.iconFill || textColor)
-          : (icon.fill ?? (icon.stroke ? 'none' : (style.iconFill || textColor))),
-        stroke: icon.stroke === 'currentColor' ? (style.iconFill || textColor) : (icon.stroke || 'none'),
-        lineWidth: icon.lineWidth ?? 1.45,
+      const path = iconTarget && icons[index];
+      this.upsert(`icon-${index}`, Path, path ? {
+        d: path.d,
+        fill: path.fill === 'currentColor' ? iconFill : (path.fill ?? (path.stroke ? 'none' : iconFill)),
+        stroke: path.stroke === 'currentColor' ? iconFill : (path.stroke || 'none'),
+        lineWidth: path.lineWidth ?? 1.45,
         lineCap: 'round',
         lineJoin: 'round',
-        transform: iconTransform,
-        opacity: progress,
+        // A small seeded tilt per card so icons never line up perfectly.
+        transform: [['translate', origin[0] + icon.x + icon.size / 2, origin[1] + icon.y + icon.size / 2], ['rotate', iconTilt(this.id)],
+          ['scale', icon.size / 24, icon.size / 24], ['translate', -12, -12]],
+        opacity: opacity * icon.alpha,
         pointerEvents: 'none',
         zIndex: 2,
       } : false, container);
     }
     this._sketchIconCount = icons.length;
-    const headingShape = this.upsert('heading', GText, headingText ? {
-      x: x + padding + iconOffset,
-      y: headingY,
-      text: headingText,
-      fill: style.headingFill || textColor,
-      fontFamily: style.headingFontFamily || 'Patrick Hand, Comic Sans MS, cursive',
-      fontSize: headingFontSize,
-      fontWeight: style.headingFontWeight ?? (variant === 'anchor' ? 500 : 400),
-      textBaseline: 'top',
-      textAlign: 'left',
-      wordWrap: true,
-      wordWrapWidth: Math.max(1, width - padding * 2 - iconOffset),
-      maxLines: maxHeadingLines,
-      textOverflow: 'ellipsis',
-      lineHeight: headingLineHeight,
-      opacity: progress,
-      pointerEvents: 'none',
-      zIndex: 2,
-    } : false, container);
 
-    // G's text metrics account for actual wrapping, so reserve the measured
-    // heading height before placing the body. The fallback covers the first
-    // frame on renderers that defer text metrics until the next tick.
-    let bodyY = headingY + (headingText ? headingFontSize + 6 : 0);
-    const headingBounds = headingShape?.getLocalBounds?.();
-    const measuredHeadingBottom = headingBounds?.max?.[1];
-    if (headingText && Number.isFinite(measuredHeadingBottom)) bodyY = Math.max(bodyY, measuredHeadingBottom + 6);
-    const bodyLines = Math.max(1, Math.floor((y + height - padding - bodyY) / bodyLineHeight));
-    this.upsert('body', GText, bodyText ? {
-      x: x + padding,
-      y: bodyY,
-      text: bodyText,
-      fill: style.bodyFill || textColor,
-      fontFamily: style.bodyFontFamily || 'Patrick Hand, cursive',
-      fontSize: style.bodyFontSize ?? 13,
-      fontWeight: style.bodyFontWeight ?? 400,
-      lineHeight: bodyLineHeight,
-      textBaseline: 'top',
-      textAlign: 'left',
-      wordWrap: true,
-      wordWrapWidth: Math.max(1, width - padding * 2),
-      maxLines: bodyLines,
-      textOverflow: 'ellipsis',
-      opacity: progress,
-      pointerEvents: 'none',
-      zIndex: 2,
-    } : false, container);
-    // This is an absolute local scale, so repeated graph updates never
-    // compound the lift. The element origin is the node center; x/y data and
-    // the key shape remain the source of truth for layout and hit testing.
-    drawWashiTape(this, attributes, container);
-    this.setLocalScale(liftScale, liftScale, 1);
-    return key;
+    this._cardWords ??= new CardWords({
+      createText: (textStyle) => container.appendChild(new GText({ style: textStyle })),
+      removeText: (shape) => { if (!shape.destroyed) shape.remove(); },
+      reducedMotion: prefersReducedMotion,
+      onFontsChanged: () => {
+        this._cardLayoutKey = null;
+        if (!this.destroyed && this._cardSource) this.drawKeyShape(this._cardSource, this);
+      },
+    });
+    const growing = time - this._sizeMotion.start < CARD_GROW.duration;
+    this._cardWords.sync(layout.words, {
+      origin,
+      opacity,
+      fills: { heading: style.headingFill || textColor, body: style.bodyFill || textColor },
+      minEnterDelay: growing ? CARD_GROW.duration * 0.5 : 0,
+    });
+  }
+
+  destroy() {
+    this._cardWords?.destroy();
+    if (this._cardTicker) stopTicking(this._cardTicker);
+    super.destroy();
   }
 }
 
 export class SketchEdge extends BaseEdge {
-  getArrowStyle(attributes, isStart) {
-    const style = super.getArrowStyle(attributes, isStart);
-    const seed = seedFor(attributes, this.id || 'arrow');
-    const width = Math.max(2, Number(attributes.lineWidth || style.lineWidth || 2.7) * .85);
-    const head = cachedPaths(`arrow:${seed}:${width}`, () => generator.toPaths(generator.path(
-      `M8 -${6 + seed % 3} Q2 -3 -7 0 Q1 2 ${7 + seed % 2} 7`,
-      { ...roughOptions({ stroke: style.stroke, lineWidth: 2.2, roughness: 1.15, disableMultiStroke: true }, seed), maxRandomnessOffset: 1.4 },
-    )));
-    const progress = attributes.drawProgress == null ? 1 : clamp(attributes.drawProgress);
-    return { ...style, d: pathData(head), width: attributes.edgeRole === 'primary' ? 18 : 14, height: attributes.edgeRole === 'primary' ? 17 : 13, fill: 'none', lineWidth: width, lineCap: 'round', lineJoin: 'round', opacity: clamp((progress - .72) / .28) };
+  // The head is drawn inside the key path (see getKeyStyle), so G6's marker
+  // arrows, and the path shortening they bring, stay off.
+  drawSourceArrow(attributes) { this.drawArrow({ ...attributes, startArrow: false }, 'start'); }
+
+  drawTargetArrow(attributes) {
+    this.drawArrow({ ...attributes, endArrow: false }, 'end');
+    const key = this.shapeMap.key;
+    if (key) key.style.markerEndOffset = 0;
   }
 
   getKeyPath(attributes) {
@@ -542,12 +640,17 @@ export class SketchEdge extends BaseEdge {
     const [source, target] = this.getEndpoints(attributes);
     const seed = seedFor(attributes, this.id || `${attributes.source}:${attributes.target}`);
     const route = graphEdgeRoute(this.context.graph, this.id, source, target, seed);
-    const lineWidth = Math.max(1.5, Number(rawStyle.lineWidth) || 2.7);
-    const key = ['gestural-edge', seed, route.d, rawStyle.stroke, lineWidth].join('|');
-    const paths = cachedPaths(key, () => generator.toPaths(generator.path(route.d, {
-      ...roughOptions({ ...rawStyle, lineWidth, roughness: 0.65, bowing: .4, disableMultiStroke: true }, seed), maxRandomnessOffset: 0.9,
-    })));
-    return { ...progressStyle({ ...style, lineWidth, strokeOpacity: rawStyle.strokeOpacity ?? .85, lineCap: 'round', lineJoin: 'round', d: pathData(paths) }, rawStyle.drawProgress, true, route.length), fill: 'none' };
+    // Stroke and head share one seeded scale, so a heavier line gets a bigger head.
+    const scale = sketchEdgeScale(seed);
+    const lineWidth = Math.max(1.5, (Number(rawStyle.lineWidth) || 2.7) * scale);
+    const head = (attributes.edgeRole === 'primary' ? 14 : 11) * scale;
+    const progress = rawStyle.drawProgress == null ? 1 : clamp(rawStyle.drawProgress);
+    const key = ['ink-edge', seed, route.d, lineWidth, Math.round(progress * 400)].join('|');
+    const ink = cachedPaths(key, () => inkArrowPath(route, seed, { width: lineWidth, head, progress, overlap: 8 }));
+    const revealed = progressStyle({ ...style, strokeOpacity: rawStyle.strokeOpacity ?? .82 }, rawStyle.drawProgress, true, route.length);
+    // One translucent fill per arrow lets the paper grain through without darker overlaps.
+    return { ...style, d: ink.d || 'M0 0', fill: rawStyle.stroke || '#1c4690', fillOpacity: revealed.strokeOpacity,
+      stroke: 'none', lineWidth: 0, lineDash: [], increasedLineWidthForHitTesting: 10 };
   }
 
   drawKeyShape(attributes, container) {

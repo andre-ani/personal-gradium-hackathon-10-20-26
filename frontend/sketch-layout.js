@@ -1,4 +1,5 @@
 import { animate } from 'motion';
+import { planRadialLayout } from './radial-layout.js';
 
 const LIFT_MS = 160;
 const MOVE_MS = 600;
@@ -313,6 +314,7 @@ function planTopicLayout(records, rank, outgoing, incoming, mode) {
  * breaks a cycle without recursion or an unbounded retry loop.
  */
 export function planSketchLayout(nodes = [], edges = [], orientation = 'horizontal') {
+  if (String(orientation).toLowerCase() === 'radial') return planRadialSketch(nodes, edges);
   const mode = orientationMode(orientation);
   const records = [];
   const byId = new Map();
@@ -478,6 +480,53 @@ export function planSketchLayout(nodes = [], edges = [], orientation = 'horizont
   }
 
   return records.map((record) => targets.get(record.id));
+}
+
+// Radial mind map: parents come from parent_id, else the first primary (then
+// any) incoming edge. The main topic keeps its current spot on the canvas.
+function planRadialSketch(nodes, edges) {
+  const list = [];
+  const seen = new Set();
+  for (const node of Array.isArray(nodes) ? nodes : []) {
+    const id = idOf(node);
+    if (id === undefined || seen.has(id)) continue;
+    seen.add(id);
+    const style = styleOf(node);
+    const data = dataOf(node);
+    const [width, height] = parseSize(style.size ?? node?.size ?? data.size, DEFAULT_SIZE);
+    list.push({
+      id,
+      parent_id: node?.parent_id ?? data.parent_id,
+      near: node?.near ?? data.near,
+      group: node?.group ?? data.group,
+      kind: node?.kind ?? data.kind,
+      width: positiveOr(style.width ?? node?.width ?? data.width, width),
+      height: positiveOr(style.height ?? node?.height ?? data.height, height),
+      space: Math.max(0, numberOr(style.illustrationSpace, 0)),
+      x: numberOr(style.x ?? node?.x ?? data.x, 0),
+      y: numberOr(style.y ?? node?.y ?? data.y, 0),
+    });
+  }
+  if (!list.length) return [];
+  const incoming = new Map();
+  for (const edge of Array.isArray(edges) ? edges : []) {
+    const source = edgeEnd(edge, 'source');
+    const target = edgeEnd(edge, 'target');
+    if (!seen.has(source) || !seen.has(target) || source === target) continue;
+    const primary = (edge.priority ?? edge.data?.priority) !== 'secondary';
+    const current = incoming.get(target);
+    if (!current || (primary && !current.primary)) incoming.set(target, { source, primary });
+  }
+  for (const record of list) {
+    if (record.parent_id === undefined || record.parent_id === null || !seen.has(record.parent_id)) {
+      record.parent_id = incoming.get(record.id)?.source;
+    }
+  }
+  const main = list.find((record) => record.kind === 'root')
+    || list.find((record) => record.parent_id === undefined)
+    || list[0];
+  const planned = planRadialLayout(list, { anchor: { x: main.x, y: main.y } });
+  return planned.map(({ id, x, y }) => ({ id, style: { x, y } }));
 }
 
 function graphData(graph) {

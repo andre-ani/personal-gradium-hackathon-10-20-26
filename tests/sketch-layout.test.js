@@ -240,3 +240,23 @@ test('cancellation settles current nodes and does not resurrect a removed node',
   assert.deepEqual(state.nodes.map((node) => node.id), ['a']);
   assert.equal(state.nodes[0].style.liftProgress, 0);
 });
+
+test('radial mode centres the main topic and spreads branches around it', () => {
+  const nodes = [
+    { id: 'root', data: { kind: 'root' }, style: { size: [340, 190], x: 40, y: 60 } },
+    ...['a', 'b', 'c', 'd', 'e'].map((id) => ({ id, data: { parent_id: 'root' }, style: { size: [300, 150], x: 0, y: 0, illustrationSpace: id === 'b' ? 200 : 0 } })),
+    { id: 'a1', data: {}, style: { size: [250, 148], x: 0, y: 0 } },
+  ];
+  const edges = [{ source: 'a', target: 'a1' }];
+  const result = planSketchLayout(nodes, edges, 'radial');
+  const position = new Map(result.map((patch) => [patch.id, patch.style]));
+  assert.deepEqual(result.map((patch) => patch.id), nodes.map((node) => node.id));
+  assert.deepEqual(position.get('root'), { x: 40, y: 60 });
+  assertNoOverlap(nodes, result);
+  const branches = ['a', 'b', 'c', 'd', 'e'].map((id) => position.get(id));
+  assert.ok(branches.some((p) => p.x < 40) && branches.some((p) => p.x > 40));
+  assert.ok(branches.some((p) => p.y < 60) && branches.some((p) => p.y > 60));
+  const out = (p) => Math.hypot(p.x - 40, p.y - 60);
+  assert.ok(out(position.get('a1')) > out(position.get('a')), 'edge-derived child continues outward');
+  assert.deepEqual(planSketchLayout(nodes, edges, 'radial'), result);
+});

@@ -8,6 +8,15 @@ from collections import deque
 _WORDS = {w: i for i, w in enumerate(('one two three four five six seven eight nine ten eleven twelve').split(), 1)}
 _NUM = r'(?:1[0-2]|[1-9]|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)'
 _COUNT = re.compile(r'\b(' + _NUM + r')\s+(?:topics?|points?|ideas?|things?|items?|steps?|subjects?)\b', re.I)
+# Mirrors frontend/palette.js. Blue is primary and always marks the first group.
+PALETTE_KEYS = ('blue', 'teal', 'green', 'ochre', 'terracotta', 'rose', 'plum', 'slate')
+_GROUP = re.compile(r'^[A-Za-z0-9_-]{1,80}$')
+# Mirrors DECORATION_TYPES in frontend/stable-decorations.js. Only washi tape
+# has a second stage; every doodle completes at level 1.
+DECORATION_KINDS = ('washi_tape', 'stars', 'sparkle', 'heart', 'burst', 'underline', 'circle')
+# Transcript lines name who spoke so interpretation can tell user ideas from
+# Cara's explanations and chatter.
+SPEAKERS = {'user': 'You', 'assistant': 'Cara'}
 
 
 class GraphSession:
@@ -21,11 +30,14 @@ class GraphSession:
         self.edges = {}
         self.revision = 0
         self.text = ''
+        self._speaker = None
+        self._user_text = ''
         self._epoch = 0
         self._last_semantic = None
         self._queue = deque()
         self._desired = {}
         self._slots = []
+        self._group_palette = {}
         self._tasks = []
         self._wake = asyncio.Event()
         self._closed = False
@@ -55,13 +67,16 @@ class GraphSession:
 
     @staticmethod
     def _semantic_node(node):
-        return {key: node.get(key) for key in ('label', 'body', 'kind', 'status', 'parent_id')}
+        return {key: node.get(key) for key in ('label', 'body', 'kind', 'status', 'parent_id', 'near')}
 
     def decoration_applied(self, message):
         """Accept a completed visual receipt, never client-authored narration."""
         ident, level = message.get('node_id'), message.get('level')
         revision, rendered = message.get('node_revision'), message.get('rendered_revision')
+        kind = message.get('decoration', 'washi_tape')
         if not isinstance(ident, str) or type(level) is not int or level not in (1, 2):
+            return None
+        if not isinstance(kind, str) or kind not in DECORATION_KINDS or (level == 2 and kind != 'washi_tape'):
             return None
         node = self.nodes.get(ident)
         if (not node or node.get('status') in ('placeholder', 'pending') or not node.get('label')
@@ -73,8 +88,11 @@ class GraphSession:
                for op, _ in self._queue):
             return None
         key = (self._epoch, ident, revision, level)
-        previous = self.decorations.get(ident, {}).get('level', 0)
+        applied = self.decorations.get(ident, {})
+        previous = applied.get('level', 0)
         if key in self._decoration_seen or len(self._decoration_seen) >= 48 or level != previous + 1:
+            return None
+        if previous and applied.get('kind') != kind:
             return None
         if ident not in self.decorations and len(self.decorations) >= 6:
             return None
@@ -82,7 +100,7 @@ class GraphSession:
         self._decoration_sequence += 1
         event = {'sequence': self._decoration_sequence, 'node_id': ident, 'label': node['label'],
                  'level': level, 'node_revision': revision, 'rendered_revision': rendered,
-                 'kind': 'washi_tape', 'status': 'visibly_completed'}
+                 'kind': kind, 'status': 'visibly_completed'}
         self.decorations[ident] = event
         self._decoration_events.append(event)
         return event
@@ -103,7 +121,7 @@ class GraphSession:
     def voice_context(self, rendered_revision=None):
         """Server-owned meaning and drawing state, without image payloads."""
         def node(value):
-            return {key: value[key] for key in ('id', 'label', 'kind', 'status', 'parent_id') if key in value}
+            return {key: value[key] for key in ('id', 'label', 'kind', 'status', 'parent_id', 'near') if key in value}
         def edge(value):
             return {key: value[key] for key in ('id', 'source', 'target', 'label') if key in value}
         return {
@@ -127,19 +145,35 @@ class GraphSession:
         await self._emit(self.snapshot())
         self._tasks = [asyncio.create_task(self._pump()), asyncio.create_task(self._semantic())]
 
-    async def ingest(self, text, mode='append'):
+    async def ingest(self, text, mode='append', speaker='user'):
         if mode not in ('append', 'replace'):
             raise ValueError('mode must be append or replace')
+        if speaker not in SPEAKERS:
+            raise ValueError('speaker must be user or assistant')
         if self._closed:
+            return
+        text = str(text).strip()
+        if not text and mode == 'append':
             return
         if mode == 'replace':
             self._epoch += 1
-        self.text = (self.text + ' ' + str(text)).strip() if mode == 'append' else str(text)
+            self.text, self._speaker, self._user_text = '', None, ''
+        # Streamed chunks from one speaker share a line; a new speaker starts one.
+        if speaker != self._speaker:
+            text = f'{SPEAKERS[speaker]}: {text}'
+            self.text = (self.text + '\n' + text) if self.text else text
+            self._speaker = speaker
+        else:
+            self.text = (self.text + ' ' + text).strip()
         self.text = self.text[-32000:]
         self.meaning_status = 'pending'
         self.meaning_message = None
         self.question = None
-        match = _COUNT.search(self.text)
+        # Only the user's own counts reserve slots; Cara's chatter ("those two
+        # ideas") must not create blank boxes.
+        if speaker == 'user':
+            self._user_text = (self._user_text + ' ' + text).strip()[-32000:]
+        match = _COUNT.search(self._user_text)
         if match:
             token = match.group(1).lower()
             count = int(token) if token.isdigit() else _WORDS[token]
@@ -162,6 +196,63 @@ class GraphSession:
             self._slots.append(node['id'])
             self._enqueue({'type': 'add_node', 'node': node}, 'structure')
 
+    def _palette_for(self, group, hint=None, avoid=None):
+        # A group's colour is fixed at first sight; later hints never repaint it.
+        # `avoid` (a loose node's neighbour colour) is skipped when possible.
+        if group in self._group_palette:
+            return self._group_palette[group]
+        used = set(self._group_palette.values())
+        if not self._group_palette:
+            key = PALETTE_KEYS[0]
+        elif hint in PALETTE_KEYS[1:] and hint not in used and hint != avoid:
+            key = hint
+        else:
+            key = next((k for k in PALETTE_KEYS[1:] if k not in used and k != avoid), None)
+            if key is None:
+                cycle = PALETTE_KEYS[1:]
+                key = cycle[(len(self._group_palette) - 1) % len(cycle)]
+                if key == avoid:
+                    key = cycle[(cycle.index(key) + 1) % len(cycle)]
+        self._group_palette[group] = key
+        return key
+
+    def _classify(self, ident, incoming, merged, old):
+        """Instant, network-free grouping: explicit group, else keep, else inherit."""
+        explicit = incoming.get('group')
+        parent = merged.get('parent_id')
+        # `near` is a placement-only hint for a parentless (loose) node.
+        near = merged.get('near')
+        if parent or not isinstance(near, str) or near == ident or near not in self._desired:
+            merged.pop('near', None)
+            near = None
+        if near:
+            # A loose node is not part of its neighbour's branch: its own group,
+            # in a colour distinct from the neighbour's.
+            group = old.get('group') if old.get('group') == ident else ident
+            merged['group'] = group
+            hint = incoming.get('palette')
+            merged['palette'] = self._palette_for(group, hint if isinstance(hint, str) else None,
+                                                  avoid=self._desired[near].get('palette'))
+            return
+        parent_node = self._desired.get(parent, {}) if parent != ident else {}
+        # Colour by branch: a root topic's direct children each start their own
+        # group, and everything deeper inherits its branch's group.
+        branch_head = bool(parent_node) and not parent_node.get('parent_id')
+        if isinstance(explicit, str) and _GROUP.fullmatch(explicit) and not (branch_head and explicit == parent):
+            group = explicit
+        elif branch_head:
+            group = old.get('group') if old.get('group') not in (None, parent) else ident
+        else:
+            group = old.get('group')
+            parent_group = parent_node.get('group')
+            # A self-rooted node that gains a parent joins that parent's group.
+            if parent_group and (group is None or (group == ident and parent != old.get('parent_id'))):
+                group = parent_group
+            group = group or ident
+        merged['group'] = group
+        hint = incoming.get('palette')
+        merged['palette'] = self._palette_for(group, hint if isinstance(hint, str) else None)
+
     def _enqueue(self, op, layer):
         kind = op.get('type')
         if kind in ('add_node', 'update_node'):
@@ -177,6 +268,7 @@ class GraphSession:
             merged.setdefault('label', ident)
             merged.setdefault('kind', 'topic')
             merged.setdefault('status', 'named')
+            self._classify(ident, node, merged, self._desired.get(ident, {}))
             if merged == self._desired.get(ident):
                 return
             for queued, _ in reversed(self._queue):
@@ -250,7 +342,8 @@ class GraphSession:
             node = dict(node, status='provisional')
             self._enqueue(dict(op, node=node), 'meaning')
             accepted = self._desired.get(ident)
-            if parent and accepted and all(accepted.get(key) == value for key, value in node.items()):
+            # `palette` is only a hint for a new group, so it may be overridden.
+            if parent and accepted and all(accepted.get(key) == value for key, value in node.items() if key != 'palette'):
                 self._enqueue({'type': 'add_edge', 'edge': {
                     'id': f'contains:{parent}:{ident}', 'source': parent,
                     'target': ident, 'label': 'contains'}}, 'meaning')
@@ -327,6 +420,8 @@ class GraphSession:
     async def reset(self):
         self._epoch += 1
         self.text = ''
+        self._speaker = None
+        self._user_text = ''
         self.meaning_status = 'idle'
         self.meaning_message = None
         self.question = None
@@ -338,6 +433,7 @@ class GraphSession:
         self._queue.clear()
         self._desired.clear()
         self._slots.clear()
+        self._group_palette.clear()
         self.nodes.clear()
         self.edges.clear()
         self._wake.clear()

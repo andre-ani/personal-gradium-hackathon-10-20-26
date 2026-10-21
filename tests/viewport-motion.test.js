@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createViewportMotion, viewportTarget } from '../frontend/viewport-motion.js';
 
-function fixture(t, { reduced = false, x = 1200 } = {}) {
+function fixture(t, { reduced = false, x = 1200, y = 200 } = {}) {
   const previousDocument = globalThis.document;
   const element = new EventTarget();
   globalThis.document = { getElementById: () => element };
@@ -12,7 +12,7 @@ function fixture(t, { reduced = false, x = 1200 } = {}) {
   const calls = [], driver = { starts: 0, stopped: false };
   const graph = {
     on: (name, handler) => events.set(name, handler), off: name => events.delete(name),
-    getData: () => ({ nodes: [{ id: 'a', style: { x, y: 200, size: [100, 100] } }] }),
+    getData: () => ({ nodes: [{ id: 'a', style: { x, y, size: [100, 100] } }] }),
     getSize: () => [800, 600], getOptions: () => ({ padding: [50, 50, 50, 50] }),
     getZoom: () => zoom,
     getViewportByCanvas: p => [...p.slice(0, 2).map((v, i) => v * zoom + origin[i]), 0],
@@ -30,11 +30,18 @@ function fixture(t, { reduced = false, x = 1200 } = {}) {
   return { graph, motion, driver, calls, element, resize() { events.get('beforesizechange')(); origin[0] -= 150; events.get('aftersizechange')(); } };
 }
 
-test('in-view patches leave the camera completely untouched', t => {
-  const { graph, motion, calls, driver } = fixture(t, { x: 200 });
+test('a centred map leaves the camera completely untouched', t => {
+  const { graph, motion, calls, driver } = fixture(t, { x: 400, y: 300 });
   assert.equal(viewportTarget(graph, { when: 'overflow' }), null);
   motion.fit({ when: 'overflow' });
   assert.deepEqual(calls, []); assert.equal(driver.starts, 0);
+});
+
+test('an in-view but off-centre map pans to the middle without zooming', t => {
+  const { graph } = fixture(t, { x: 200 });
+  const target = viewportTarget(graph, { when: 'overflow' });
+  assert.equal(target.zoom, 1);
+  assert.deepEqual(target.origin, [200, 100]);
 });
 
 test('reframing has no measurement teleport or zoom-in, and same bounds do not restart it', async t => {
@@ -44,9 +51,9 @@ test('reframing has no measurement teleport or zoom-in, and same bounds do not r
   await motion.fit({ when: 'overflow' }); assert.equal(driver.starts, 1);
   driver.update(.5); await new Promise(resolve => setImmediate(resolve));
   assert.equal(graph.getZoom(), 1);
-  assert.deepEqual(graph.getViewportByCanvas([0, 0]).slice(0, 2), [-258, 0]);
+  assert.deepEqual(graph.getViewportByCanvas([0, 0]).slice(0, 2), [-400, 50]);
   driver.finish(); await fitting;
-  assert.deepEqual(graph.getViewportByCanvas([0, 0]).slice(0, 2), [-516, 0]);
+  assert.deepEqual(graph.getViewportByCanvas([0, 0]).slice(0, 2), [-800, 100]);
 });
 
 test('pointer cancellation prevents a stale pan after an awaited zoom', async t => {
@@ -72,12 +79,12 @@ test('reduced motion applies target once without animation or measuring moves', 
   const { graph, motion, driver } = fixture(t, { reduced: true });
   await motion.fit({ when: 'overflow' });
   assert.equal(driver.starts, 0); assert.equal(graph.getZoom(), 1);
-  assert.deepEqual(graph.getViewportByCanvas([0, 0]).slice(0, 2), [-516, 0]);
+  assert.deepEqual(graph.getViewportByCanvas([0, 0]).slice(0, 2), [-800, 100]);
 });
 
 
 test('container resize preserves the visible origin instead of shifting every card', async t => {
-  const { graph, driver, resize } = fixture(t, { x: 200 });
+  const { graph, driver, resize } = fixture(t, { x: 400, y: 300 });
   resize();
   await new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(graph.getViewportByCanvas([0, 0]).slice(0, 2), [0, 0]);

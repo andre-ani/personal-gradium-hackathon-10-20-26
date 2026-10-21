@@ -1,0 +1,211 @@
+/* The splash sits on the workspace's own paper shader. */
+.splash {
+  --sp-ink: #132b4e;
+  --sp-blue: #123f85;
+  --sp-muted: #485d79;
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow: hidden;
+  color: var(--sp-ink);
+  background: transparent;
+  font-family: 'Patrick Hand', cursive;
+}
+
+.splash[hidden] { display: none; }
+
+/* The workspace keeps its layout underneath but stays out of sight. */
+body:not(.thread-entered) > header,
+body:not(.thread-entered) > .layout { visibility: hidden; }
+
+.splash-top {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.splash-caps {
+  font: 600 10.5px/1 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--sp-muted);
+}
+
+.gradium-mark {
+  display: inline-block;
+  height: 15px;
+  aspect-ratio: 1201 / 262;
+  background: var(--sp-ink);
+  mask: url('/static/brand/gradium-wordmark.svg') center / contain no-repeat;
+  -webkit-mask: url('/static/brand/gradium-wordmark.svg') center / contain no-repeat;
+}
+
+.splash-main {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 2.4vh, 26px);
+  padding: 60px 16px 40px;
+}
+
+.splash-heading { display: grid; justify-items: center; gap: 2px; text-align: center; }
+
+.splash-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  font: 400 clamp(48px, 8vh, 72px)/1 'Patrick Hand', cursive;
+  color: var(--sp-blue);
+  letter-spacing: .01em;
+}
+
+.splash-logo,
+.brand .brand-logo {
+  width: 1.05em;
+  height: auto;
+  mix-blend-mode: multiply;
+}
+
+.splash-tagline {
+  margin: 0;
+  font-size: clamp(20px, 2.9vh, 26px);
+  color: var(--sp-muted);
+}
+
+.splash-graph {
+  /* Wide enough for a two-sided mind map plus its drawings. */
+  width: min(1120px, 94vw);
+  height: clamp(210px, 36vh, 340px);
+}
+
+.splash-dock {
+  position: relative;
+  width: 100px;
+  height: 88px;
+  margin-top: 70px;
+}
+
+.splash-cara {
+  position: absolute;
+  inset: 0;
+}
+
+.splash-cara-tag {
+  position: absolute;
+  right: calc(100% - 14px);
+  top: -16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 1px;
+  rotate: 8deg;
+  color: var(--sp-blue);
+  opacity: var(--ink-alpha, .86);
+  pointer-events: none;
+}
+.splash-cara-tag svg { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; overflow: visible; margin-top: 8px; }
+.splash-cara-tag span { font: 19px/1 'Patrick Hand', cursive; }
+
+.splash-cara svg {
+  display: block;
+  overflow: hidden;
+  mix-blend-mode: multiply;
+  filter: url(#cara-paper-ink);
+}
+
+.splash-cta-row {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.splash-cta {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 26px 13px 20px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--sp-blue);
+  font: 24px/1 'Patrick Hand', cursive;
+  box-shadow: 0 6px 18px rgb(19 43 78 / .22), 0 1px 3px rgb(19 43 78 / .14);
+  transition: transform .35s cubic-bezier(.22, 1, .36, 1), box-shadow .35s cubic-bezier(.22, 1, .36, 1), background .2s;
+}
+
+.splash-cta:hover:not(:disabled) { transform: translateY(-2px); background: #1c4690; box-shadow: 0 10px 26px rgb(19 43 78 / .26), 0 2px 4px rgb(19 43 78 / .12); }
+.splash-cta:active:not(:disabled) { transform: translateY(1px) scale(.98); }
+.splash-cta:disabled { cursor: progress; opacity: .82; }
+.splash-cta[aria-busy='true'] svg { animation: splash-listen 1.1s ease-in-out infinite; }
+.splash-cta:focus-visible { outline: 3px solid rgb(28 70 144 / .5); outline-offset: 5px; }
+
+.splash-cta-ring {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  border: 2px solid var(--sp-blue);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash-note {
+  min-height: 1em;
+  margin: 0;
+  max-width: 36ch;
+  text-align: center;
+  font-size: 18px;
+  color: var(--sp-ink);
+}
+
+.splash-note:empty { visibility: hidden; }
+
+@keyframes splash-listen { 50% { transform: scale(1.18); } }
+
+/* View transition: the button becomes the live mic, the wordmark becomes the
+   header and the Gradium credit stays put. Cara is not morphed (no doubles). */
+.splash:not([hidden]) .splash-brand { view-transition-name: thread-brand; }
+.splash:not([hidden]) .splash-top { view-transition-name: gradium-credit; }
+.splash:not([hidden]) .splash-cta { view-transition-name: thread-mic; }
+body.thread-entered .brand { view-transition-name: thread-brand; }
+body.thread-entered .header-credit { view-transition-name: gradium-credit; }
+body.thread-entered #mic { view-transition-name: thread-mic; }
+
+::view-transition-old(root) { animation: thread-paper-out .7s cubic-bezier(.4, 0, .2, 1) both; }
+::view-transition-new(root) { animation: thread-paper-in .9s .15s cubic-bezier(.22, 1, .36, 1) both; }
+
+::view-transition-group(thread-brand),
+::view-transition-group(gradium-credit),
+::view-transition-group(thread-mic) {
+  animation-duration: 1.1s;
+  animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+}
+
+::view-transition-old(thread-brand),
+::view-transition-old(thread-mic) { animation: thread-fade-out .5s ease-in both; }
+::view-transition-new(thread-brand),
+::view-transition-new(thread-mic) { animation: thread-fade-in .6s .35s ease-out both; }
+
+@keyframes thread-paper-out { to { opacity: 0; } }
+@keyframes thread-paper-in { from { opacity: 0; transform: scale(.985); } }
+@keyframes thread-fade-out { to { opacity: 0; } }
+@keyframes thread-fade-in { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}

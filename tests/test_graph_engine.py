@@ -188,19 +188,54 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
         await entered.wait()
         release.set()
         await asyncio.sleep(.02)
-        self.assertEqual(calls, ['same transcript'])
+        self.assertEqual(calls, ['You: same transcript'])
         entered.clear()
         release.clear()
         await self.session.request_refinement()
         await entered.wait()
         for _ in range(10):
             await self.session.request_refinement()
-        self.assertEqual(calls, ['same transcript', 'same transcript'])
+        self.assertEqual(calls, ['You: same transcript'] * 2)
         release.set()
         await asyncio.sleep(.04)
-        self.assertEqual(calls, ['same transcript'] * 3)
+        self.assertEqual(calls, ['You: same transcript'] * 3)
         self.assertEqual(peak, 1)
-        self.assertEqual(self.session.text, 'same transcript')
+        self.assertEqual(self.session.text, 'You: same transcript')
+
+    async def test_transcript_tags_speakers_and_joins_streamed_chunks(self):
+        await self.session.ingest('map out')
+        await self.session.ingest('photosynthesis for me')
+        await self.session.ingest('Ooh, okay!', speaker='assistant')
+        await self.session.ingest('Photosynthesis.', speaker='assistant')
+        await self.session.ingest('   ', speaker='user')
+        await self.session.ingest('wait', speaker='user')
+        self.assertEqual(self.session.text, 'You: map out photosynthesis for me\n'
+                         'Cara: Ooh, okay! Photosynthesis.\nYou: wait')
+        self.assertEqual(self.session.voice_context()['transcript'], self.session.text)
+        with self.assertRaises(ValueError):
+            await self.session.ingest('x', speaker='system')
+        await self.session.reset()
+        await self.session.ingest('fresh', speaker='assistant')
+        self.assertEqual(self.session.text, 'Cara: fresh')
+
+    async def test_assistant_counts_do_not_reserve_blank_slots(self):
+        await self.session.ingest('Love those two ideas!', speaker='assistant')
+        await asyncio.sleep(.05)
+        self.assertEqual(self.session.nodes, {})
+        await self.session.ingest('We will talk about two topics')
+        await asyncio.sleep(.05)
+        self.assertEqual(len(self.session.nodes), 2)
+
+    async def test_assistant_text_uses_same_debounced_refinement(self):
+        calls = []
+        async def interpret(text, graph):
+            calls.append(text)
+            return {'operations': []}
+        self.session.classify, self.session.refine = None, interpret
+        for chunk in ('Ooh, okay!', 'Photosynthesis.', 'Plants make food from light.'):
+            await self.session.ingest(chunk, speaker='assistant')
+        await asyncio.sleep(.05)
+        self.assertEqual(calls, ['Cara: Ooh, okay! Photosynthesis. Plants make food from light.'])
 
     async def test_bounded_backlog_and_node_cap(self):
         for i in range(500):
@@ -209,6 +244,97 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
         for i in range(500):
             self.session._enqueue({'type': 'add_edge', 'edge': {'id': str(i), 'source': '0', 'target': '1'}}, 'meaning')
         self.assertEqual(len(self.session._queue), 160)
+
+    async def test_fast_classification_groups_and_colours_instantly(self):
+        await self.session.ingest('We will talk about three topics')
+        # Classified at enqueue time, before any provider call or patch.
+        desired = self.session._desired
+        self.assertEqual([desired[f'topic-{i}']['group'] for i in (1, 2, 3)], ['topic-1', 'topic-2', 'topic-3'])
+        self.assertEqual([desired[f'topic-{i}']['palette'] for i in (1, 2, 3)], ['blue', 'teal', 'green'])
+        basis = {key: dict(node) for key, node in desired.items()}
+        self.session._enqueue_meaning({'type': 'add_node', 'node': {
+            'id': 'contrast', 'label': 'Contrast', 'parent_id': 'topic-2'}}, basis)
+        # A root's direct child is its own branch, so it gets the next colour.
+        self.assertEqual((desired['contrast']['group'], desired['contrast']['palette']), ('contrast', 'ochre'))
+        await asyncio.sleep(.08)
+        patched = {e['op']['node']['id']: e['op']['node'] for e in self.events
+                   if e['type'] == 'graph_patch' and 'node' in e['op']}
+        self.assertEqual(patched['contrast']['palette'], 'ochre')
+        self.assertEqual(self.session.snapshot()['nodes'][0]['palette'], 'blue')
+        # The parent-child edge still follows the classified child.
+        self.assertIn('contains:topic-2:contrast', self.session.edges)
+
+    async def test_group_colours_never_flicker_and_refinement_can_regroup(self):
+        self.session._enqueue({'type': 'add_node', 'node': {'id': 'a', 'label': 'A'}}, 'meaning')
+        self.session._enqueue({'type': 'add_node', 'node': {'id': 'b', 'label': 'B'}}, 'meaning')
+        self.session._enqueue({'type': 'add_node', 'node': {'id': 'c', 'label': 'C', 'parent_id': 'a'}}, 'meaning')
+        desired = self.session._desired
+        self.assertEqual([desired[k]['palette'] for k in 'abc'], ['blue', 'teal', 'green'])
+        # Sparse updates, null groups and hints for an existing group keep colours.
+        self.session._enqueue({'type': 'update_node', 'node': {'id': 'c', 'label': 'C2', 'group': None}}, 'meaning')
+        self.session._enqueue({'type': 'update_node', 'node': {'id': 'b', 'label': 'B2', 'palette': 'rose'}}, 'meaning')
+        self.assertEqual((desired['c']['group'], desired['c']['palette']), ('c', 'green'))
+        self.assertEqual(desired['b']['palette'], 'teal')
+        # An explicit regroup moves the card into the other group's colour.
+        self.session._enqueue({'type': 'update_node', 'node': {'id': 'c', 'group': 'b'}}, 'meaning')
+        self.assertEqual((desired['c']['group'], desired['c']['palette']), ('b', 'teal'))
+        # A new group honours an unused hint; blue stays reserved for the first group.
+        self.session._enqueue({'type': 'add_node', 'node': {'id': 'd', 'label': 'D', 'palette': 'plum'}}, 'meaning')
+        self.session._enqueue({'type': 'add_node', 'node': {'id': 'e', 'label': 'E', 'palette': 'blue'}}, 'meaning')
+        self.assertEqual(desired['d']['palette'], 'plum')
+        self.assertNotEqual(desired['e']['palette'], 'blue')
+        for i in range(12):
+            self.session._enqueue({'type': 'add_node', 'node': {'id': f'r{i}', 'label': str(i)}}, 'meaning')
+        self.assertEqual([n['palette'] for n in desired.values()].count('blue'), 1)
+        await self.session.reset()
+        self.session._enqueue({'type': 'add_node', 'node': {'id': 'z', 'label': 'Z'}}, 'meaning')
+        self.assertEqual(self.session._desired['z']['palette'], 'blue')
+
+    async def test_branches_get_their_own_colour_and_deeper_cards_inherit_it(self):
+        self.session._enqueue({'type': 'add_node', 'node': {'id': 'root', 'label': 'Root'}}, 'meaning')
+        self.session._enqueue({'type': 'add_node', 'node': {'id': 'loose', 'label': 'Loose'}}, 'meaning')
+        self.session._enqueue({'type': 'update_node', 'node': {'id': 'loose', 'parent_id': 'root'}}, 'meaning')
+        desired = self.session._desired
+        self.assertEqual(desired['loose']['group'], 'loose')
+        self.assertNotEqual(desired['loose']['palette'], 'blue')
+        self.session._enqueue({'type': 'add_node', 'node': {'id': 'leaf', 'label': 'Leaf', 'parent_id': 'loose'}}, 'meaning')
+        self.assertEqual((desired['leaf']['group'], desired['leaf']['palette']), ('loose', desired['loose']['palette']))
+        # A refinement can't fold a branch back into its root's colour.
+        self.session._enqueue({'type': 'update_node', 'node': {'id': 'loose', 'group': 'root'}}, 'meaning')
+        self.assertEqual(desired['loose']['group'], 'loose')
+
+    async def test_loose_near_node_has_own_group_distinct_colour_and_no_edge(self):
+        enqueue = self.session._enqueue_meaning
+        enqueue({'type': 'add_node', 'node': {'id': 'party', 'label': 'Garden party', 'kind': 'topic', 'status': 'named'}}, {})
+        enqueue({'type': 'add_node', 'node': {'id': 'food', 'label': 'Food', 'kind': 'idea', 'status': 'named', 'parent_id': 'party'}}, {})
+        basis = {key: dict(node) for key, node in self.session._desired.items()}
+        enqueue({'type': 'add_node', 'node': {'id': 'lemonade', 'label': 'Lemonade', 'kind': 'idea', 'status': 'named',
+                                              'near': 'food', 'group': 'food'}}, basis)
+        desired = self.session._desired
+        self.assertEqual(desired['lemonade']['near'], 'food')
+        self.assertEqual(desired['lemonade']['group'], 'lemonade')
+        self.assertNotEqual(desired['lemonade']['palette'], desired['food']['palette'])
+        self.assertNotIn('parent_id', desired['lemonade'])
+        for _ in range(100):
+            if not self.session._queue:
+                break
+            await asyncio.sleep(.01)
+        await asyncio.sleep(.02)
+        self.assertEqual(self.session.nodes['lemonade']['near'], 'food')
+        self.assertFalse(any(e['target'] == 'lemonade' for e in self.session.edges.values()))
+        self.assertIn('contains:party:food', self.session.edges)
+        # Unknown neighbours and near beside a parent are dropped.
+        self.session._enqueue({'type': 'add_node', 'node': {'id': 'x', 'label': 'X', 'near': 'missing'}}, 'meaning')
+        self.session._enqueue({'type': 'add_node', 'node': {'id': 'y', 'label': 'Y', 'parent_id': 'party', 'near': 'food'}}, 'meaning')
+        self.assertNotIn('near', desired['x'])
+        self.assertNotIn('near', desired['y'])
+
+    async def test_loose_near_colour_avoids_neighbour_when_palette_is_exhausted(self):
+        for i in range(9):
+            self.session._enqueue({'type': 'add_node', 'node': {'id': f'n{i}', 'label': f'N{i}'}}, 'meaning')
+        neighbour = self.session._desired['n8']['palette']
+        self.session._enqueue({'type': 'add_node', 'node': {'id': 'loose', 'label': 'Loose', 'kind': 'idea', 'near': 'n8', 'palette': neighbour}}, 'meaning')
+        self.assertNotEqual(self.session._desired['loose']['palette'], neighbour)
 
     async def test_ingestion_continues_during_provider_call(self):
         entered, release = asyncio.Event(), asyncio.Event()

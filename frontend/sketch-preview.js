@@ -22,8 +22,8 @@ const nodeType = registration.nodeType;
 const edgeType = registration.edgeType;
 
 const palette = {
-  ink: '#174a9c',
-  line: '#2455a6',
+  ink: '#123f85',
+  line: '#1c4690',
   paper: '#e5e5e2',
   rootFill: '#f3f3ef',
   nodeFill: '#f6f6f3',

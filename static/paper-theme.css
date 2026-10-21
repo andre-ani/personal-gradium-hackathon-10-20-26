@@ -2,21 +2,21 @@
 
 /* Paper is a quiet surface for the live shader and the idea map. */
 :root {
-  --paper-base: #e5e5e2;
-  --paper-light: #f1f1ee;
-  --ink-deep: #19365f;
+  --paper-base: #f1f1f1;
+  --paper-light: #f7f7f7;
+  --ink-deep: #132b4e;
   --ink: var(--ink-deep);
-  --blue-ink: #174a9c;
-  --blue-accent: #2455a6;
-  --blue-soft: #6a87b8;
-  --muted-ink: #58708f;
+  --blue-ink: #123f85;
+  --blue-accent: #1c4690;
+  --blue-soft: #56739f;
+  --muted-ink: #485d79;
   --muted: var(--muted-ink);
-  --line: rgba(23, 74, 156, 0.22);
-  --line-soft: rgba(23, 74, 156, 0.14);
-  --focus: #2455a6;
+  --line: rgba(18, 63, 133, 0.22);
+  --line-soft: rgba(18, 63, 133, 0.14);
+  --focus: #1c4690;
   --error: #a13b3b;
-  --shadow-control: 0 4px 14px rgba(25, 54, 95, 0.13), 0 1px 3px rgba(25, 54, 95, 0.08);
-  --shadow-panel: 0 12px 32px rgba(25, 54, 95, 0.16), 0 2px 8px rgba(25, 54, 95, 0.1);
+  --shadow-control: 0 4px 14px rgba(19, 43, 78, 0.13), 0 1px 3px rgba(19, 43, 78, 0.08);
+  --shadow-panel: 0 12px 32px rgba(19, 43, 78, 0.16), 0 2px 8px rgba(19, 43, 78, 0.1);
 
   /* Legacy variable names stay wired to the paper palette for the incumbent shell. */
   --violet: var(--blue-accent);
@@ -104,13 +104,13 @@ button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 3px solid rgba(36, 85, 166, 0.72);
+  outline: 3px solid rgba(28, 70, 144, 0.72);
   outline-offset: 3px;
 }
 
 a:focus-visible,
 [tabindex]:focus-visible {
-  outline: 3px solid rgba(36, 85, 166, 0.72);
+  outline: 3px solid rgba(28, 70, 144, 0.72);
   outline-offset: 3px;
 }
 
@@ -150,7 +150,7 @@ a:focus-visible,
 .quiet:hover {
   background: transparent;
   box-shadow: none;
-  color: #123b7d;
+  color: #0e316c;
 }
 
 .quiet:active {
@@ -206,7 +206,7 @@ a:focus-visible,
   border: 0;
   border-radius: 50%;
   color: var(--blue-accent);
-  background: rgba(36, 85, 166, 0.12);
+  background: rgba(28, 70, 144, 0.12);
   box-shadow: var(--shadow-control);
 }
 
@@ -220,11 +220,11 @@ a:focus-visible,
 
 .legend i {
   border: 0;
-  background: rgba(36, 85, 166, 0.14);
+  background: rgba(28, 70, 144, 0.14);
 }
 
 .legend span + span i {
-  background: rgba(36, 85, 166, 0.12);
+  background: rgba(28, 70, 144, 0.12);
 }
 
 .dock {
@@ -259,7 +259,7 @@ a:focus-visible,
 
 .layout.conversation-open > .sidebar {
   background: rgba(241, 241, 238, 0.62);
-  box-shadow: -12px 0 32px rgba(25, 54, 95, 0.12);
+  box-shadow: -12px 0 32px rgba(19, 43, 78, 0.12);
 }
 
 .sidebar h2 {
@@ -304,12 +304,12 @@ a:focus-visible,
   border: 0;
   border-radius: 5px;
   color: var(--blue-ink);
-  background: rgba(36, 85, 166, 0.12);
+  background: rgba(28, 70, 144, 0.12);
   box-shadow: var(--shadow-control);
 }
 
 .send:hover {
-  background: rgba(36, 85, 166, 0.2);
+  background: rgba(28, 70, 144, 0.2);
 }
 
 .error {
@@ -435,33 +435,36 @@ a:focus-visible,
 .speech-ribbon {
   position: absolute;
   left: 50%;
-  bottom: calc(100% + 12px);
-  width: 240px;
-  max-width: calc(100vw - 48px);
-  height: 42px;
+  bottom: calc(100% + 2px);
+  width: 380px;
+  max-width: calc(100vw - 16px);
+  height: 92px;
   transform: translateX(-50%);
   overflow: hidden;
   pointer-events: none;
   color: var(--ink-deep);
   text-align: left;
-  mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 4px), transparent);
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 4px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+  filter: url(#speech-ink-boil);
 }
 
 .speech-word {
   position: absolute;
   left: 0;
-  top: 10px;
+  top: 8px;
   display: block;
-  max-width: 235px;
+  max-width: 280px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 24px;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 21px;
+  font-weight: 400;
+  line-height: 26px;
+  color: var(--blue-ink);
   transform-origin: center bottom;
+  will-change: transform, opacity;
 }
 
 /* Actions sit directly on the canvas; only graph notes carry paper surfaces. */
@@ -486,22 +489,38 @@ a:focus-visible,
   .canvas-actions .quiet { padding: 7px; }
 }
 
-/* Cara is the voice control. Her mouth silences output; the small mic sits by her ear. */
+/* Cara is the voice control. One round button above her starts and stops talking;
+   her mouth silences output. */
 .dock { display: block; padding: 0; width: 76px; height: 68px; bottom: 16px; overflow: visible; }
 .cara-avatar { position: relative; left: auto; bottom: auto; transform: none; width: 76px; height: 68px; pointer-events: auto; }
 .cara-avatar canvas { display: block; width: 100%; height: 100%; mix-blend-mode: multiply; filter: url(#cara-paper-ink); }
 .cara-paper-filter { position: absolute; pointer-events: none; }
-.dock .mic { position: absolute; width: 32px; height: 36px; left: -32px; bottom: 15px; opacity: .55; }
-.dock .mic:hover, .dock .mic:focus-visible { opacity: 1; }
-.dock .mic.recording { color: var(--blue-ink); opacity: .85; }
-.dock .mic > svg { width: 16px; height: 16px; }
+.dock .mic {
+  /* A hand-drawn speech bubble above Cara: tap it to talk. */
+  position: absolute; left: calc(50% - 29px); bottom: calc(100% + 2px);
+  display: grid; place-items: center; width: 58px; height: 50px; padding: 0 0 10px;
+  border: 0; border-radius: 0; color: var(--blue-ink); opacity: 1; box-shadow: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 58 50'%3E%3Cpath d='M10 5.5 C20 3 40 3.4 49 5 C55 6.6 56.2 12 55.6 21 C55 30.5 52.6 36 46 37.4 L34.5 38.4 L29.4 47.2 L25.2 38.4 L11 37.6 C5 36.8 2.8 31 3.2 21.2 C3.6 11.4 4.6 6.4 10 5.5 Z' fill='%23f3f3f3' stroke='%23123f85' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M14 8.5 C24 7 36 7 46 8.6' fill='none' stroke='%23123f85' stroke-opacity='.25' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  rotate: -3deg; transform-origin: 50% 100%;
+}
+.dock .mic:hover:not(:disabled) { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 58 50'%3E%3Cpath d='M10 5.5 C20 3 40 3.4 49 5 C55 6.6 56.2 12 55.6 21 C55 30.5 52.6 36 46 37.4 L34.5 38.4 L29.4 47.2 L25.2 38.4 L11 37.6 C5 36.8 2.8 31 3.2 21.2 C3.6 11.4 4.6 6.4 10 5.5 Z' fill='%23f3f3f3' stroke='%23123f85' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M14 8.5 C24 7 36 7 46 8.6' fill='none' stroke='%23123f85' stroke-opacity='.25' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat; box-shadow: none; filter: drop-shadow(0 3px 5px rgb(19 43 78 / .14)); }
+.dock .mic.recording, .dock .mic.recording:hover:not(:disabled) { color: #a3402a; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 58 50'%3E%3Cpath d='M10 5.5 C20 3 40 3.4 49 5 C55 6.6 56.2 12 55.6 21 C55 30.5 52.6 36 46 37.4 L34.5 38.4 L29.4 47.2 L25.2 38.4 L11 37.6 C5 36.8 2.8 31 3.2 21.2 C3.6 11.4 4.6 6.4 10 5.5 Z' fill='%23f6ede9' stroke='%23a3402a' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M14 8.5 C24 7 36 7 46 8.6' fill='none' stroke='%23a3402a' stroke-opacity='.25' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat; animation: mic-bubble-breathe 2.4s ease-in-out infinite; }
+.dock .mic:disabled { opacity: .55; }
+.dock .mic > svg { width: 20px; height: 20px; }
+@keyframes mic-bubble-breathe { 50% { rotate: 2deg; scale: 1.05; } }
+@media (prefers-reduced-motion: reduce) { .dock .mic.recording { animation: none; } }
 .dock-status, .dock .audio-meter { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .cara-mouth { position: absolute; width: 44px; height: 44px; left: 16px; top: 30px; padding: 0; background: none; border: 0; border-radius: 50%; color: var(--blue-ink); cursor: pointer; }
 .cara-mouth:hover { background: none; }
 .cara-mouth:focus-visible { outline: 1px dashed currentColor; outline-offset: 0; }
 .cara-muted-mark { position: absolute; right: -10px; bottom: 10px; opacity: 0; }
 .cara-avatar[data-muted="true"] .cara-muted-mark { opacity: .75; }
-.dock .speech-ribbon { bottom: calc(100% + 10px); }
+.dock .speech-ribbon { bottom: calc(100% - 6px); }
+/* Your words ride the outer arc in black ink; Cara's sit on the inner arc in blue. */
+.dock .speech-ribbon--outer { width: 480px; bottom: calc(100% + 30px); }
+.dock .speech-ribbon--inner { width: 330px; bottom: calc(100% - 4px); }
+.speech-ribbon--outer .speech-word { color: #1d1d1f; }
+.speech-ribbon--inner .speech-word { color: var(--blue-ink); font-size: 19px; }
 @media (max-width: 600px) {
   .dock { bottom: 12px; }
   .cara-avatar { width: 76px; height: 68px; bottom: auto; }
@@ -509,3 +528,65 @@ a:focus-visible,
 /* A deliberate listening pose changes once with the state; it never rocks in a loop. */
 .cara-avatar[data-mood="listening"] canvas { transform: rotate(-5deg); transform-origin: 50% 60%; }
 .dock .mic-ring { display: none; }
+
+/* Ink sits slightly into the paper: text and the logo let the texture through. */
+:root { --ink-alpha: .86; }
+.brand, .tagline, .graph-label, .graph-help, .empty p, .quiet, .utterance, .sidebar h2, .subtle, .notice,
+.speech-ribbon, .splash-brand, .splash-tagline, .splash-top, .splash-note {
+  opacity: var(--ink-alpha);
+}
+
+/* One fine, neutral grain over everything. Soft-light keeps it from tinting. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: .55;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+/* A soft vignette over the whole app, darkening only toward the edges. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  background: radial-gradient(ellipse 75% 70% at 50% 48%, transparent 55%, rgb(24 24 24 / .16) 100%);
+}
+
+/* Everything you touch lives at the bottom-middle, around Cara. */
+.dock { bottom: 36px; }
+.bottom-bar { position: absolute; left: 0; right: 0; bottom: 52px; z-index: 3; pointer-events: none; }
+.bar-side { position: absolute; bottom: 0; display: flex; align-items: center; gap: 2px; pointer-events: auto; }
+.bar-side.left { right: calc(50% + 62px); }
+.bar-side.right { left: calc(50% + 62px); }
+.status-line {
+  position: absolute; left: 50%; bottom: 10px; translate: -50% 0; z-index: 3;
+  display: flex; align-items: center; gap: 12px; max-width: min(680px, 92%);
+  font-size: 13px; white-space: nowrap; pointer-events: none;
+}
+.status-line .graph-label { display: flex; align-items: center; }
+.status-line .graph-help { position: static; max-width: 46ch; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.status-line .graph-help:empty { display: none; }
+.header-credit { display: flex; align-items: center; gap: 10px; }
+.header-credit .gradium-mark { background: var(--ink-deep); }
+.header-credit .splash-caps { color: var(--muted-ink); }
+@media (max-width: 760px) {
+  .bar-side .quiet { font-size: 0; gap: 0; padding: 8px; }
+  .bar-side.left { right: calc(50% + 52px); }
+  .bar-side.right { left: calc(50% + 52px); }
+}
+
+/* Bottom controls are icon-only; their label is written above on hover. */
+.bar-side .quiet { font-size: 0; gap: 0; padding: 9px; }
+.bar-side .quiet > svg { width: 20px; height: 20px; }
+.ink-tip {
+  position: fixed; z-index: 45; translate: -50% -100%;
+  font: 19px/1 'Patrick Hand', cursive; color: var(--blue-ink); opacity: 0;
+  white-space: nowrap; pointer-events: none;
+}

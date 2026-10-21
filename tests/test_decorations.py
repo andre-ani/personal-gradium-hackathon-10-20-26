@@ -77,3 +77,33 @@ class DecorationTests(unittest.IsolatedAsyncioTestCase):
             accepted = self.graph.decoration_applied(dict(original, node_id=ident))
             self.assertEqual(accepted is not None, i < 5)
         self.assertEqual(len(self.graph.decorations), 6)
+
+    async def test_doodle_kinds_complete_in_one_stage_and_reach_voice_context(self):
+        from graph_engine import DECORATION_KINDS
+        self.assertEqual(set(DECORATION_KINDS), {'washi_tape', 'stars', 'sparkle', 'heart', 'burst', 'underline', 'circle'})
+        original = self.receipt(decoration='stars')
+        event = self.graph.decoration_applied(original)
+        self.assertEqual(event['kind'], 'stars')
+        self.assertEqual(self.graph.voice_context()['completed_decorations'][0]['kind'], 'stars')
+        # Doodles have no second stage, and a tape level 2 cannot follow a doodle.
+        self.assertIsNone(self.graph.decoration_applied(dict(original, level=2)))
+        self.assertIsNone(self.graph.decoration_applied(dict(original, level=2, decoration='washi_tape')))
+
+    async def test_rejects_unknown_or_malformed_decoration_kinds(self):
+        original = self.receipt()
+        for kind in ('confetti', '', None, 3, ['stars'], 'Stars'):
+            self.assertIsNone(self.graph.decoration_applied(dict(original, decoration=kind)))
+        # A receipt without a kind is the original two-stage washi tape.
+        self.assertEqual(self.graph.decoration_applied(original)['kind'], 'washi_tape')
+        self.assertEqual(self.graph.decoration_applied(dict(original, level=2))['kind'], 'washi_tape')
+
+    async def test_each_doodle_kind_is_accepted(self):
+        from graph_engine import DECORATION_KINDS
+        for index, kind in enumerate(DECORATION_KINDS):
+            ident = f'card{index}'
+            node = {'id': ident, 'label': ident, 'status': 'named'}
+            self.graph.nodes[ident] = self.graph._desired[ident] = node
+            self.graph.node_revisions[ident] = self.graph.revision
+            event = self.graph.decoration_applied(dict(self.receipt(decoration=kind), node_id=ident))
+            if index < 6:
+                self.assertEqual(event['kind'], kind)

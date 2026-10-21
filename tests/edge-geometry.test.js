@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sketchEdgeRoute } from '../frontend/edge-geometry.js';
+import { MIN_TURN_RADIUS, inkArrowPath, minTurnRadius, sketchEdgeRoute, sketchEdgeScale, sketchLoopPlan } from '../frontend/edge-geometry.js';
 
 function sampledPoints(path, steps = 32) {
   const points = [];
@@ -38,19 +38,26 @@ test('G6 3D points produce valid, deterministic 2D drawing commands', () => {
   assert.ok(Math.abs(end[0] - 410) < .001 && Math.abs(end[1] - 120) < .001);
 });
 
-test('long clear routes keep a compact optional loop and a small gesture', () => {
-  const loop = sketchEdgeRoute([0, 0], [400, 0], 10, { loop: true });
-  const simple = sketchEdgeRoute([0, 0], [400, 0], 11, { loop: false });
-  const loopPoints = sampledPoints(loop.path);
-  assert.ok(loop.path.length > 2);
-  assert.ok(Math.max(...loopPoints.map((point) => Math.abs(point[1]))) <= 18);
-  assert.ok(loop.length < 450);
+test('an optional loop is one generous curl partway along a long route', () => {
+  const loop = sketchEdgeRoute([0, 0], [600, 0], 10, { loop: true });
+  const simple = sketchEdgeRoute([0, 0], [600, 0], 10, { loop: false });
+  assert.ok(loop.loop, 'a forced loop fits on a long clear route');
+  assert.ok(loop.loop.at >= 0.3 && loop.loop.at <= 0.7);
+  assert.ok(loop.loop.radius >= 14 && loop.loop.radius <= 22);
+  assert.ok(Math.max(...sampledPoints(loop.path).map((point) => Math.abs(point[1]))) <= loop.loop.radius * 2 + 1);
   assert.notEqual(loop.d, simple.d);
+  assert.equal(sketchEdgeRoute([0, 0], [200, 0], 10, { loop: true }).loop, undefined, 'short edges never loop');
 });
 
-test('routes detour around unrelated card interiors with compact rounded corners', () => {
+test('loops stay rare and deterministic across seeds', () => {
+  const enabled = Array.from({ length: 400 }, (_, seed) => sketchLoopPlan(seed).enabled).filter(Boolean).length;
+  assert.ok(enabled > 40 && enabled < 120, `about one in five edges loop (${enabled}/400)`);
+  assert.deepEqual(sketchLoopPlan('edge-a'), sketchLoopPlan('edge-a'));
+});
+
+test('routes bend smoothly around unrelated card interiors', () => {
   const card = { id: 'middle', x: 150, y: -40, width: 100, height: 80 };
-  const route = sketchEdgeRoute([0, 0, 0], [400, 0, 0], 3, {
+  const options = {
     obstacles: [
       { id: 'source', x: -90, y: -60, width: 80, height: 120 },
       card,
@@ -58,30 +65,22 @@ test('routes detour around unrelated card interiors with compact rounded corners
     ],
     sourceId: 'source',
     targetId: 'target',
-    loop: true,
-  });
+    sourceNormal: [1, 0],
+    targetNormal: [-1, 0],
+    loop: false,
+  };
+  const route = sketchEdgeRoute([-10, 0], [410, 0], 3, options);
   assert.ok(route.path.length > 2);
   assert.ok(sampledPoints(route.path).every((point) => !inside(point, card)));
-  assert.ok(route.path.every((segment) => segment.slice(1).every(Number.isFinite)));
-  assert.deepEqual(route, sketchEdgeRoute([0, 0, 0], [400, 0, 0], 3, {
-    obstacles: [
-      { id: 'source', x: -90, y: -60, width: 80, height: 120 },
-      card,
-      { id: 'target', x: 410, y: -60, width: 80, height: 120 },
-    ],
-    sourceId: 'source',
-    targetId: 'target',
-    loop: true,
-  }));
+  assert.ok(minTurnRadius(route.path) >= MIN_TURN_RADIUS * 0.9);
+  assert.deepEqual(route, sketchEdgeRoute([-10, 0], [410, 0], 3, options));
 });
 
-test('occupied routes add a deterministic crossing detour when a channel exists', () => {
-  const occupied = { path: [['M', 200, -50], ['C', 200, -20, 200, 20, 200, 50]] };
-  const options = { occupiedRoutes: [occupied], loop: false };
-  const route = sketchEdgeRoute([0, 0], [400, 0], 1, options);
-  assert.ok(route.path.length > 2);
-  assert.ok(sampledPoints(route.path).every(([x, y]) => Math.abs(x - 200) > 1 || Math.abs(y) > 50));
-  assert.deepEqual(route, sketchEdgeRoute([0, 0], [400, 0], 1, options));
+test('edge size varies by seed between 0.8x and 1.5x', () => {
+  const scales = Array.from({ length: 200 }, (_, seed) => sketchEdgeScale(`edge-${seed}`));
+  assert.ok(scales.every((scale) => scale >= 0.8 && scale <= 1.5));
+  assert.ok(Math.max(...scales) - Math.min(...scales) > 0.5);
+  assert.equal(sketchEdgeScale('edge-1'), sketchEdgeScale('edge-1'));
 });
 
 test('short or coincident connections stay finite', () => {
@@ -90,4 +89,13 @@ test('short or coincident connections stay finite', () => {
     assert.ok(Number.isFinite(route.length));
     assert.ok(!route.d.includes('NaN'));
   }
+});
+
+test('ink arrows carry their tip a few pixels past the route end, inside the target card', () => {
+  const route = sketchEdgeRoute([0, 0], [300, 0], 4, { loop: false, sourceNormal: [1, 0], targetNormal: [-1, 0] });
+  const xs = (d) => [...d.matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g)].map((match) => Number(match[1]));
+  const flush = Math.max(...xs(inkArrowPath(route, 4, { width: 3, head: 12 }).d));
+  const inside = Math.max(...xs(inkArrowPath(route, 4, { width: 3, head: 12, overlap: 8 }).d));
+  assert.ok(inside - flush > 6 && inside - flush < 10);
+  assert.equal(inkArrowPath(route, 4, { progress: 0, overlap: 8 }).d, '', 'an undrawn arrow has no ink');
 });

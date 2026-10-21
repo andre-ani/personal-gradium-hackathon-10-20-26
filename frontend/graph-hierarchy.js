@@ -21,10 +21,13 @@ export function paperEdgeStyle(role) {
   const primary = role === 'primary';
   return {
     edgeRole: primary ? 'primary' : 'supporting',
-    stroke: primary ? '#174a9c' : '#456b9c',
+    stroke: primary ? '#123f85' : '#37597f',
     lineWidth: primary ? 4 : 2.7,
-    strokeOpacity: primary ? 0.95 : 0.65,
+    // Slightly translucent ink so the paper grain shows through.
+    strokeOpacity: primary ? 0.85 : 0.78,
     lineDash: [],
     endArrow: true,
+    // Above the cards, so each arrowhead reads on top of the card it lands in.
+    zIndex: 1,
   };
 }

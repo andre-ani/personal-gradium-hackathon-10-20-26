@@ -6,10 +6,10 @@ import {
 
 const MAX_PIXEL_COUNT = 1_500_000;
 
-const FALLBACK_BACKGROUND_COLOR = '#e5e5e2';
+const FALLBACK_BACKGROUND_COLOR = '#f1f1f1';
 const FALLBACK_BACKGROUND_IMAGE = [
   'radial-gradient(circle at 18% 12%, rgb(255 255 255 / 0.54), transparent 46%)',
-  'repeating-linear-gradient(103deg, rgb(84 89 96 / 0.025) 0 1px, transparent 1px 5px)',
+  'repeating-linear-gradient(103deg, rgb(90 90 90 / 0.02) 0 1px, transparent 1px 5px)',
   'repeating-linear-gradient(8deg, rgb(255 255 255 / 0.24) 0 2px, transparent 2px 10px)',
 ].join(', ');
 
@@ -17,29 +17,30 @@ const PAPER_UNIFORMS = {
   // Keep a stable aspect ratio even though this is a standalone texture.
   u_imageAspectRatio: 1,
   u_isImage: false,
-  u_colorBack: [0.855, 0.86, 0.858, 1],
-  u_colorPaper: [0.9, 0.902, 0.895, 1],
-  u_colorShadow: [0.3, 0.32, 0.35, 0.22],
+  // Fully neutral greys: the paper should read as texture, never as a tint.
+  u_colorBack: [0.925, 0.925, 0.925, 1],
+  u_colorPaper: [0.955, 0.955, 0.955, 1],
+  u_colorShadow: [0.3, 0.3, 0.3, 0.1],
   u_blending: 0,
   u_distortion: 0,
   u_clip: false,
   u_angle: 118,
   u_seed: 37,
-  u_roughness: 0.34,
+  u_roughness: 0.22,
   u_roughnessSize: 0.66,
   u_roughnessRows: 0.14,
-  u_fiber: 0.27,
+  u_fiber: 0.17,
   u_fiberSize: 0.58,
-  u_folds: 0.045,
+  u_folds: 0.025,
   u_foldSizeX: 0.7,
   u_foldSizeY: 0.66,
   u_foldOffsetX: 0.34,
   u_foldOffsetY: 0.58,
-  u_wrinkles: 0.025,
+  u_wrinkles: 0.012,
   u_wrinkleSize: 0.62,
   u_crumples: 0,
   u_crumpleCount: 2,
-  u_drops: 0.08,
+  u_drops: 0.03,
   // PaperTexture uses this tiny bundled image for deterministic noise.
   u_noiseTexture: undefined,
   // Shader sizing uniforms. A full-viewport, non-image texture needs no fit.

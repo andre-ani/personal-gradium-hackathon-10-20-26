@@ -1,5 +1,6 @@
 """Local HTTP contract checks; no external provider requests."""
 import asyncio
+import json
 import unittest
 
 from aiohttp import web
@@ -91,6 +92,51 @@ class RefinementContractTests(unittest.TestCase):
             with self.subTest(operation=operation), self.assertRaises(ProviderUnavailable):
                 self.parse(operation)
 
+    def test_group_and_palette_refinement_is_validated(self):
+        result = self.parse({'type': 'add_node', 'node': {'id': 'child', 'label': 'Child', 'kind': 'idea',
+                             'status': 'named', 'parent_id': 'topic-1', 'group': 'topic-1', 'palette': None}})
+        self.assertEqual(result['node']['group'], 'topic-1')
+        self.assertNotIn('palette', result['node'])
+        result = self.parse({'type': 'update_node', 'node': {'id': 'topic-1', 'group': None, 'palette': 'teal'}})
+        self.assertNotIn('group', result['node'])
+        self.assertEqual(result['node']['palette'], 'teal')
+        # Invalid hints are dropped rather than failing the whole refinement.
+        for node in ({'id': 'topic-1', 'group': '../x'}, {'id': 'topic-1', 'palette': 'neon'}):
+            with self.subTest(node=node):
+                result = self.parse({'type': 'update_node', 'node': node})
+                self.assertNotIn('group', result['node'])
+                self.assertNotIn('palette', result['node'])
+
+    def test_schema_stays_simple_enough_for_gemini(self):
+        # Gemini rejects schemas with too many states; classification hints stay loose strings.
+        from providers import _NODE_SCHEMA
+        for field in ('near', 'group', 'palette'):
+            self.assertEqual(_NODE_SCHEMA['properties'][field], {'type': ['string', 'null'], 'maxLength': _NODE_SCHEMA['properties'][field]['maxLength']})
+        self.assertEqual(_NODE_SCHEMA['properties']['near']['maxLength'], 80)
+        self.assertEqual(len(_NODE_SCHEMA['properties']), 8)
+
+    def test_near_hint_is_validated_and_dropped_when_invalid(self):
+        result = self.parse({'type': 'add_node', 'node': {'id': 'lemonade', 'label': 'Lemonade', 'kind': 'idea',
+                             'status': 'named', 'parent_id': None, 'near': 'topic-1', 'group': None, 'palette': None}})
+        self.assertEqual(result['node']['near'], 'topic-1')
+        self.assertNotIn('parent_id', result['node'])
+        for near in ('missing', '../x', 'lemonade', 7, None, ''):
+            with self.subTest(near=near):
+                result = self.parse({'type': 'add_node', 'node': {'id': 'lemonade', 'label': 'Lemonade', 'kind': 'idea',
+                                     'status': 'named', 'parent_id': None, 'near': near}})
+                self.assertNotIn('near', result['node'])
+        # A real parent wins; near is only for loose cards.
+        result = self.parse({'type': 'add_node', 'node': {'id': 'cake', 'label': 'Cake', 'kind': 'idea',
+                             'status': 'named', 'parent_id': 'topic-1', 'near': 'topic-1'}})
+        self.assertNotIn('near', result['node'])
+        # near may reference a node added earlier in the same response.
+        from providers import _parse_refinement
+        ops = _parse_refinement({'operations': [
+            {'type': 'add_node', 'node': {'id': 'party', 'label': 'Garden party', 'kind': 'topic', 'status': 'named'}},
+            {'type': 'add_node', 'node': {'id': 'lemonade', 'label': 'Lemonade', 'kind': 'idea', 'status': 'named', 'near': 'party'}},
+        ], 'question': None}, self.graph)['operations']
+        self.assertEqual(ops[1]['node']['near'], 'party')
+
     def test_strict_schema_has_three_closed_operation_variants(self):
         from providers import REFINEMENT_SCHEMA
         schema = REFINEMENT_SCHEMA
@@ -103,6 +149,27 @@ class RefinementContractTests(unittest.TestCase):
             data = variant['properties'][field]
             self.assertEqual(set(data['required']), set(data['properties']))
             self.assertFalse(data['additionalProperties'])
+
+
+class RefinePromptTests(unittest.IsolatedAsyncioTestCase):
+    async def test_prompt_maps_cara_explanations_but_not_her_chatter(self):
+        import providers
+        from unittest.mock import patch
+        sent = {}
+        async def fake_post(url, key, payload, timeout):
+            sent.update(payload)
+            return {'choices': [{'message': {'content': '{"operations":[],"question":null}'}}]}
+        transcript = 'You: map out photosynthesis for me\nCara: Ooh, okay! Photosynthesis.'
+        with patch.object(providers, '_llm_config', return_value=('u', 'k', 'm')), \
+                patch.object(providers, '_post', fake_post):
+            result = await providers.refine(transcript, {'nodes': []})
+        self.assertEqual(result, {'operations': [], 'question': None})
+        prompt = sent['messages'][0]['content']
+        for rule in ('"You:" (the user) or "Cara:"', 'only when she is explaining or mapping a topic',
+                     'map out photosynthesis for me', 'produce NO operations', 'never add a duplicate',
+                     'Never ask a question about Cara', 'Return no operations for filler'):
+            self.assertIn(rule, prompt)
+        self.assertEqual(json.loads(sent['messages'][1]['content'])['transcript'], transcript)
 
 
 if __name__ == '__main__':

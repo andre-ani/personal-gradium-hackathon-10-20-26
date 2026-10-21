@@ -181,11 +181,24 @@ export function createUIMotion() {
   }
   window.addEventListener('pagehide', dispose, { once: true });
   return {
+    // Ink settling onto the page: soft blur-in, a short rise, the brand loop
+    // drawn with a pencil stroke. No springs; this runs as the splash lifts.
     intro() {
-      const elements = [...document.querySelectorAll('.brand, .header-actions, .graph-top, .graph-help, .empty > *, .legend, .dock')];
-      const delay = stagger(.045, { startDelay: .03 });
-      elements.forEach((element, index) => run(element, { opacity: [0, 1] },
-        { duration: .5, delay: delay(index, elements.length) }, { opacity: '1' }));
+      const soft = [.22, 1, .36, 1];
+      const loop = find('.brand svg path');
+      if (loop && !media.matches && !disposed) {
+        const length = Math.ceil(loop.getTotalLength());
+        loop.style.strokeDasharray = `${length}`;
+        run(loop, { strokeDashoffset: [length, 0] }, { duration: 1.2, delay: .2, ease: [.45, 0, .2, 1] }, { strokeDashoffset: '0' });
+      }
+      const elements = [...document.querySelectorAll('.tagline, .header-credit, .graph-label, .bar-side > *, .graph-help, .empty > *, .legend')];
+      if (media.matches || disposed) return;
+      const delay = stagger(.06, { startDelay: .35 });
+      // Plays once, outside the shared per-element slot used by hover/press
+      // feedback, so a first hover can't interrupt or replay it.
+      elements.forEach((element, index) => animate(element,
+        { opacity: [0, 1], translate: ['0 6px', '0 0'] },
+        { duration: .7, ease: soft, delay: delay(index, elements.length) }));
     },
     transcript(element, { isNew = false } = {}) {
       const now = performance.now();
@@ -198,7 +211,8 @@ export function createUIMotion() {
     status(element, text) {
       if (!element || element.textContent === text) return;
       element.textContent = text;
-      run(element, { opacity: [.55, 1] }, { duration: .22 }, { opacity: '1' });
+      run(element, { opacity: [.35, 1], translate: ['0 3px', '0 0'] },
+        { duration: .38, ease: [.22, 1, .36, 1] }, { opacity: '1', translate: '0 0', filter: 'none' });
     },
     busy,
     voice,
@@ -208,7 +222,15 @@ export function createUIMotion() {
         { duration: open ? .27 : .18 }, { opacity: open ? '1' : '0', translate: open ? '0 0' : '14px 0' });
     },
     empty(element, visible) {
-      return run(element, { opacity: visible ? [0, 1] : 0 }, { duration: .25 }, { opacity: visible ? '1' : '0' });
+      return run(element, visible
+        ? { opacity: [0, 1], translate: ['0 6px', '0 0'] }
+        : { opacity: 0, translate: '0 -4px' },
+      { duration: visible ? .6 : .4, ease: [.22, 1, .36, 1] }, { opacity: visible ? '1' : '0', translate: '0 0' });
+    },
+    // Clearing the map fades the ink out, then the blank sheet settles back.
+    erase(element) {
+      return run(element, { opacity: [1, 0, 0, 1] },
+        { duration: 1.1, times: [0, .35, .55, 1], ease: 'easeInOut' }, { opacity: '1', filter: 'none' });
     },
     clear(elements = []) {
       for (const element of elements) {

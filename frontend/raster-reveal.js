@@ -77,7 +77,8 @@ function inkPoints(pixels, size, cell) {
   for (let y = 0; y < size; y += cell) for (let x = 0; x < size; x += cell) {
     let weight = 0, sx = 0, sy = 0, xx = 0, yy = 0, xy = 0;
     for (let py = y; py < Math.min(size, y + cell); py++) for (let px = x; px < Math.min(size, x + cell); px++) {
-      const v = 255 - pixels[(py * size + px) * 4];
+      const i = (py * size + px) * 4;
+      const v = 255 - (pixels[i] * .2126 + pixels[i + 1] * .7152 + pixels[i + 2] * .0722);
       if (v < 12) continue;
       weight += v; sx += px * v; sy += py * v; xx += px * px * v; yy += py * py * v; xy += px * py * v;
     }
@@ -91,7 +92,7 @@ function inkPoints(pixels, size, cell) {
 /** Network/decode never joins the graph render promise. */
 export function mountRasterDrawing(container, drawing, { reducedMotion = false, duration = 4.8, autoplay = true, onActivity = () => {} } = {}) {
   const imageURL = new URL(drawing.image_url, location.origin);
-  if (imageURL.origin !== location.origin || !/^\/(?:api\/illustrations\/|static\/illustration-proof\/)/.test(imageURL.pathname)) throw new Error('Illustration must be a local image.');
+  if (imageURL.origin !== location.origin || !/^\/(?:api\/illustrations\/|static\/illustration-proof\/|static\/splash\/)/.test(imageURL.pathname)) throw new Error('Illustration must be a local image.');
   const size = 320, cell = 12;
   const output = canvas(size), ctx = output.getContext('2d');
   output.style.cssText = 'width:160px;height:160px;display:block;mix-blend-mode:multiply;';
@@ -172,9 +173,13 @@ export function mountRasterDrawing(container, drawing, { reducedMotion = false, 
     for (let py = 0; py < size; py++) for (let px = 0; px < size; px++) {
       const index = py * size + px, i = index * 4;
       const white = Math.max(128, paper[Math.floor(py / tile) * columns + Math.floor(px / tile)]);
-      const ink = Math.max(0, white - gray[index] - 6);
-      const value = 255 - Math.min(255, Math.round(ink * 255 / Math.max(1, white - 6)));
-      pixels.data[i] = pixels.data[i + 1] = pixels.data[i + 2] = value; pixels.data[i + 3] = 255;
+      // Lift each channel against the local paper white so the palette
+      // colours survive (the background still becomes pure white).
+      for (let c = 0; c < 3; c++) {
+        const ink = Math.max(0, white - pixels.data[i + c] - 6);
+        pixels.data[i + c] = 255 - Math.min(255, Math.round(ink * 255 / Math.max(1, white - 6)));
+      }
+      pixels.data[i + 3] = 255;
     }
     sourceContext.putImageData(pixels, 0, 0);
     strokes = planBrushStrokes(inkPoints(pixels.data, size, cell), drawing.image_url, cell);

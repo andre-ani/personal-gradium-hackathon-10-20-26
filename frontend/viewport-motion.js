@@ -14,8 +14,9 @@ export function viewportTarget(graph, { when = 'always' } = {}) {
     const size = Array.isArray(style.size) ? style.size : [style.size || 250, style.size || 148];
     const x = Number(style.x) || 0, y = Number(style.y) || 0;
     const extra = Number(style.illustrationSpace) || 0;
-    const halfHeight = Math.max(size[1] / 2, extra ? 80 : 0);
-    bounds[0] = Math.min(bounds[0], x - size[0] / 2 - 16);
+    // Illustrations may sit on any side of their card, so reserve room all round.
+    const halfHeight = size[1] / 2 + extra;
+    bounds[0] = Math.min(bounds[0], x - size[0] / 2 - extra - 16);
     bounds[1] = Math.min(bounds[1], y - halfHeight - 16);
     bounds[2] = Math.max(bounds[2], x + size[0] / 2 + extra + 16);
     bounds[3] = Math.max(bounds[3], y + halfHeight + 16);
@@ -25,7 +26,7 @@ export function viewportTarget(graph, { when = 'always' } = {}) {
   const safe = [left, top, width - right, height - bottom];
   const inView = [bounds[0] * zoom + origin[0], bounds[1] * zoom + origin[1], bounds[2] * zoom + origin[0], bounds[3] * zoom + origin[1]];
   // A little slack avoids camera activity from text/rounding changes at an edge.
-  if (when === 'overflow' && inView[0] >= safe[0] - 12 && inView[1] >= safe[1] - 12 && inView[2] <= safe[2] + 12 && inView[3] <= safe[3] + 12) return null;
+  const centred = when === 'overflow' && inView[0] >= safe[0] - 12 && inView[1] >= safe[1] - 12 && inView[2] <= safe[2] + 12 && inView[3] <= safe[3] + 12;
   const range = graph.getOptions().zoomRange || [.05, 10];
   const fitZoom = Math.min(available[0] / Math.max(1, bounds[2] - bounds[0]), available[1] / Math.max(1, bounds[3] - bounds[1]));
   const targetZoom = Math.max(range[0], Math.min(range[1], when === 'overflow' ? zoom : 1.2, fitZoom));
@@ -34,14 +35,10 @@ export function viewportTarget(graph, { when = 'always' } = {}) {
   if (when !== 'overflow') {
     targetOrigin = [center[0] - (bounds[0] + bounds[2]) / 2 * targetZoom, center[1] - (bounds[1] + bounds[3]) / 2 * targetZoom];
   } else {
-    // Keep the current focal point, then pan only as far as the new extent needs.
-    const anchor = graph.getCanvasByViewport(center);
-    targetOrigin = center.map((v, i) => v - anchor[i] * targetZoom);
-    for (let axis = 0; axis < 2; axis++) {
-      const min = bounds[axis] * targetZoom + targetOrigin[axis];
-      const max = bounds[axis + 2] * targetZoom + targetOrigin[axis];
-      targetOrigin[axis] += min < safe[axis] ? safe[axis] - min : max > safe[axis + 2] ? safe[axis + 2] - max : 0;
-    }
+    // The map prefers the middle: centre it at the current zoom (zooming out
+    // only when it no longer fits). Tiny drifts are ignored to keep it calm.
+    targetOrigin = [center[0] - (bounds[0] + bounds[2]) / 2 * targetZoom, center[1] - (bounds[1] + bounds[3]) / 2 * targetZoom];
+    if (centred && targetZoom === zoom && Math.hypot(targetOrigin[0] - origin[0], targetOrigin[1] - origin[1]) < 18) return null;
   }
   return { zoom: targetZoom, origin: targetOrigin, signature: [...bounds, width, height].join(':') };
 }

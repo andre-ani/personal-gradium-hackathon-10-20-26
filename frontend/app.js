@@ -1,12 +1,16 @@
 import { Graph } from '@antv/g6';
+import { animate as animateValue } from 'motion';
 import { refreshEdgeRoutes } from './graph-edge-routes.js';
 import { classifyGraphHierarchy, paperEdgeStyle } from './graph-hierarchy.js';
 import { createStableDecorations } from './stable-decorations.js';
 import { createIllustrationLayer } from './illustration-layer.js';
 import { createSketchReorder } from './sketch-layout.js';
+import { LIVE_ILLUSTRATION_RESERVE, isLooseCard, placeRadialNode, withContainsEdges } from './radial-layout.js';
 import { createSketchIcon } from './sketch-icons.js';
 import { mountMorphingControl } from './morphing-controls.js';
+import { mountInkTooltips } from './ink-tooltip.js';
 import { paperNodeStyle } from './sketch-style.js';
+import { PRIMARY, paletteColour } from './palette.js';
 import { mountPaperBackground } from './paper-background.js';
 import { registerSketchElements } from './sketch-elements.js';
 import { drawSketchEntrance, resetSketchEntrance } from './sketch-motion.js';
@@ -15,6 +19,9 @@ import { createViewportMotion } from './viewport-motion.js';
 import { createSpeechRibbon } from './speech-ribbon.js';
 import { createCaraAvatar } from './cara-avatar.js';
 import { createVoiceOutputMute } from './voice-output-mute.js';
+import { mountSplash } from './splash.js';
+import { createShareRecorder } from './share-recorder.js';
+import { createShareDialog } from './share-dialog.js';
 registerSketchElements();
 mountPaperBackground();
 const $ = id => document.getElementById(id);
@@ -27,24 +34,101 @@ const conversationMorph = mountMorphingControl($('conversation-toggle'), {from:'
 
 const reducedMedia = matchMedia('(prefers-reduced-motion: reduce)');
 let reduced = reducedMedia.matches;
+const splash = mountSplash($('splash'), { isReduced: () => reduced, onVoice: () => startVoice(),
+  onReveal: () => uiMotion.intro(), onEntered: () => cara.happy() });
 const uiMotion = createUIMotion();
-const speechRibbon = createSpeechRibbon(document.querySelector('.dock'), () => reduced);
+// Two concentric caption arcs: your words on the outer arc, Cara's on the inner one.
+const userRibbon = createSpeechRibbon(document.querySelector('.dock'), () => reduced, { width: 400, radius: 470, variant: 'outer' });
+const caraRibbon = createSpeechRibbon(document.querySelector('.dock'), () => reduced, { width: 250, radius: 290, variant: 'inner' });
+const speechRibbon = {
+  append: (text, options = {}) => (options.speaker === 'user' ? userRibbon : caraRibbon).append(text, options),
+  snapshot: () => userRibbon.snapshot(),
+  clear: () => { userRibbon.clear(); caraRibbon.clear(); },
+  reduce: () => { userRibbon.reduce(); caraRibbon.reduce(); },
+  dispose: () => { userRibbon.dispose(); caraRibbon.dispose(); },
+};
 const voiceOutput = createVoiceOutputMute();
 let caraMuted = false;
 const cara = createCaraAvatar(document.querySelector('.dock'), { readLevels: () => readAudioLevels(), isReduced: () => reduced, onMute: muted => { caraMuted = voiceOutput.setMuted(muted); cara.update({ muted: caraMuted }); } });
-const graph = new Graph({container:'graph',autoResize:true,padding:[88,64,132,64],animation:false,node:{type:'sketch-rect',style:datum=>({radius:12,labelPlacement:'center',labelFontFamily:'Patrick Hand, cursive',labelFontSize:13,labelFill:'#174a9c',labelWordWrap:true,labelMaxLines:3,labelMaxWidth:148,shadowColor:'#173b6b14',shadowBlur:12,shadowOffsetY:4,...datum.style})},edge:{type:'sketch-cubic-horizontal',style:datum=>({stroke:'#2455a6',lineWidth:2.4,endArrow:true,...datum.style})},behaviors:['drag-canvas','zoom-canvas','drag-element']});
+const graph = new Graph({container:'graph',autoResize:true,padding:[88,64,240,64],animation:false,node:{type:'sketch-rect',style:datum=>({radius:12,labelPlacement:'center',labelFontFamily:'Patrick Hand, cursive',labelFontSize:13,labelFill:'#123f85',labelWordWrap:true,labelMaxLines:3,labelMaxWidth:148,shadowColor:'#173b6b14',shadowBlur:12,shadowOffsetY:4,...datum.style})},edge:{type:'sketch-cubic-horizontal',style:datum=>({stroke:'#1c4690',lineWidth:2.4,endArrow:true,...datum.style})},behaviors:['drag-canvas','zoom-canvas','drag-element']});
 const viewportMotion = createViewportMotion(graph, () => reduced);
 const illustrationLayer = createIllustrationLayer(graph, $('graph'), { isReduced: () => reduced,
   onDrawingChange: active => { illustrationDrawing = active; updateWork(); } });
 const reorderMotion = createSketchReorder(graph, { reducedMotion: () => reduced });
+const recorder = createShareRecorder({ graph, graphElement: $('graph'), readCaptions: () => speechRibbon.snapshot(),
+  caraCanvas: () => document.querySelector('.cara-avatar canvas'),
+  isBusy: () => rendering || semanticWorking || queueDepth > 0 || illustrationDrawing });
+const shareDialog = createShareDialog({ isReduced: () => reduced });
+let shareSupported = true;
+const updateShare = () => { $('share').disabled = !shareSupported || nodes.size === 0 || !recorder.hasClip; };
 let layoutIndex = -1;
-const layoutOrientations = ['horizontal', 'vertical', 'reverse'];
+const layoutOrientations = ['radial', 'horizontal', 'vertical'];
 const nodeRevisions = new Map();
 let graphSessionId=null, renderEpoch=0, resetPending=false, renderedRevision=null, voiceContextTimer;
 let entranceController = new AbortController();
 let renderGeneration = 0, graphInitialized = false;
-let nodes=new Map(), edges=new Map(), positions=new Map(), slot=0, graphSocket, renderChain=Promise.resolve(), reconnectTimer, demoTimers=[];
-function position(n){if(positions.has(n.id))return positions.get(n.id);const parent=positions.get(n.parent_id);let p;if(parent){const siblings=[...nodes.values()].filter(v=>v.parent_id===n.parent_id);const i=siblings.findIndex(v=>v.id===n.id);p={x:parent.x+550,y:parent.y+((i%2?1:-1)*Math.ceil(i/2)*200)};while([...positions.values()].some(v=>Math.abs(v.x-p.x)<520&&Math.abs(v.y-p.y)<170))p.y+=200;}else{p={x:170,y:190+slot++*200};}positions.set(n.id,p);return p;}
+let nodes=new Map(), edges=new Map(), positions=new Map(), graphSocket, renderChain=Promise.resolve(), reconnectTimer, demoTimers=[];
+// Placement only ever assigns new cards; placed cards never move. The live
+// canvas grows as a radial mind map: branches open in the widest free angle
+// around their topic (beside their group), deeper cards fan outward from
+// their parent, and separate topics become satellite centres.
+function liveCard(n) {
+  // Sizes grow as body text and main-topic styling arrive, so reserve the
+  // larger main size and illustration room on every branch up front.
+  // A loose card (no parent, beside a neighbour) reserves art room like a branch.
+  const root = n.kind === 'root' || (!n.parent_id && !isLooseCard(n));
+  // Cards size to their content, so reserve most of the variant's grown size:
+  // compact cards stay close together, and a card that gains body text rarely
+  // outgrows its slot.
+  const style = paperNodeStyle({ ...n, topicRole: root ? 'main' : n.topicRole });
+  const [width, height] = style.size;
+  const [maxWidth, maxHeight] = style.maxSize || style.size;
+  return { id: n.id, parent_id: n.parent_id, near: n.near, group: n.group, kind: n.kind,
+    width: Math.max(width + 20, maxWidth * .75), height: Math.max(height + 16, maxHeight * .75),
+    space: n.illustration ? 200 : root ? 0 : LIVE_ILLUSTRATION_RESERVE };
+}
+function position(n){
+  if(positions.has(n.id))return positions.get(n.id);
+  const placed=[...positions].filter(([id])=>id!==n.id&&nodes.has(id)).map(([id,p])=>({...liveCard(nodes.get(id)),x:p.x,y:p.y}));
+  const p=placeRadialNode(liveCard(n),placed);
+  positions.set(n.id,p);return p;
+}
+// A card whose group changes glides to its new group's lane instead of jumping.
+const placedGroup = new Map();
+function regroupMoves() {
+  const moves = [];
+  for (const n of nodes.values()) {
+    const was = placedGroup.get(n.id);
+    if (was !== undefined && n.group && was !== n.group && positions.has(n.id)) {
+      const from = positions.get(n.id);
+      positions.delete(n.id);
+      moves.push({ id: n.id, from, to: position(n) });
+    }
+  }
+  for (const n of nodes.values()) placedGroup.set(n.id, n.group);
+  return moves;
+}
+async function animateMoves(moves) {
+  const set = p => graph.updateNodeData(moves.map(({ id, from, to }) => ({ id, style: { x: from.x + (to.x - from.x) * p, y: from.y + (to.y - from.y) * p } })));
+  if (!reduced) {
+    let drawing = null, dirty = false;
+    const flush = () => {
+      if (drawing) { dirty = true; return; }
+      drawing = graph.draw().finally(() => { drawing = null; if (dirty) { dirty = false; flush(); } });
+    };
+    await animateValue(0, 1, { duration: .75, ease: [.65, 0, .35, 1], onUpdate: p => { set(p); flush(); } });
+  }
+  set(1);
+  await graph.draw();
+  await refreshEdgeRoutes(graph);
+}
+// Edges take the target card's group ink; blue-to-blue lines keep the role style.
+function edgeTint(e) {
+  const source = nodes.get(e.source), target = nodes.get(e.target);
+  if (!target?.palette || ['placeholder', 'pending'].includes(target.status)) return {};
+  const primary = key => paletteColour(key) === paletteColour(PRIMARY);
+  return primary(target.palette) && primary(source?.palette) ? {} : { stroke: paletteColour(target.palette).ink };
+}
 async function draw({ animate = false } = {}) {
   const signal = entranceController.signal;
   const previous = graph.getData();
@@ -54,30 +138,32 @@ async function draw({ animate = false } = {}) {
   const existingNodes = new Set(previous.nodes.map(n => n.id));
   const existingEdges = new Set(previous.edges.map(e => e.id));
   const addedNodes = animate ? [...nodes.keys()].filter(id => !existingNodes.has(id)) : [];
-  const visibleEdges = [...edges.values()].filter(e => nodes.has(e.source) && nodes.has(e.target));
   // The backend sends a declared parent and its contains edge as separate
-  // patches. Draw that known connection first so the child follows its line.
-  for (const n of nodes.values()) {
-    if (n.parent_id && nodes.has(n.parent_id) && !visibleEdges.some(e => e.source === n.parent_id && e.target === n.id)) {
-      visibleEdges.push({ id: `contains:${n.parent_id}:${n.id}`, source: n.parent_id, target: n.id });
-    }
-  }
+  // patches. Draw that known connection first so the child follows its line;
+  // loose cards (no parent_id, optional `near`) get no arrow.
+  const visibleEdges = withContainsEdges([...nodes.values()], [...edges.values()]);
   const addedEdges = animate ? visibleEdges.filter(e => !existingEdges.has(e.id)).map(e => e.id) : [];
-  const hierarchy = classifyGraphHierarchy([...nodes.values()], visibleEdges);
+  // A loose card is a supporting idea, not another main topic, despite having no incoming arrow.
+  const firstNode = nodes.keys().next().value;
+  const hierarchy = classifyGraphHierarchy([...nodes.values()].map(n => n.id !== firstNode && isLooseCard(n) && !n.topicRole ? { ...n, topicRole: 'supporting' } : n), visibleEdges);
   const routeRevision = Date.now();
   stableDecorations.sync([...nodes.values()], visibleEdges, { nodeRevisions, renderedRevision });
+  const moves = regroupMoves();
+  const startAt = new Map(moves.map(move => [move.id, move.from]));
   const dataNodes = [...nodes.values()].map(n => ({ id: n.id, data: { ...n, topicRole: hierarchy.nodeRoles.get(n.id) }, style: {
-    ...paperNodeStyle({ ...n, topicRole: hierarchy.nodeRoles.get(n.id) }), ...stableDecorations.styleFor(n.id), illustrationSpace:168, ...position(n),
+    ...paperNodeStyle({ ...n, topicRole: hierarchy.nodeRoles.get(n.id) }), ...stableDecorations.styleFor(n.id), ...(n.illustration ? { illustrationSpace: 200 } : {}), ...(startAt.get(n.id) || position(n)),
     drawProgress: !reduced && addedNodes.includes(n.id) ? 0 : 1,
   }}));
   graph.setData({ nodes: dataNodes, edges: visibleEdges.map(e => ({ ...e, style: {
-    ...e.style, ...paperEdgeStyle(hierarchy.edgeRoles.get(e.id)), routeRevision, drawProgress: !reduced && addedEdges.includes(e.id) ? 0 : 1,
+    ...e.style, ...paperEdgeStyle(hierarchy.edgeRoles.get(e.id)), ...edgeTint(e), routeRevision, drawProgress: !reduced && addedEdges.includes(e.id) ? 0 : 1,
   }})) });
   if (!graphInitialized) { await graph.render(); graphInitialized = true; }
   else await graph.draw();
+  if (moves.length) await animateMoves(moves);
   illustrationLayer.sync(nodes.values());
   updateEmpty(nodes.size === 0);
   $('reorder').disabled = nodes.size === 0;
+  updateShare();
   // Reframing can retarget smoothly while new patches keep drawing.
   if (nodes.size) void viewportMotion.fit({ when: 'overflow' }).catch(error => {
     uiMotion.status($('graph-help'), 'The map could not reframe. Try Fit map.'); console.error(error);
@@ -130,7 +216,7 @@ function enqueue(message) {
       for (const [id, revision] of Object.entries(message.node_revisions || {})) nodeRevisions.set(id, revision);
       nodes = new Map(message.nodes.map(n => [n.id, n]));
       edges = new Map(message.edges.map(e => [e.id, e]));
-      if (!nodes.size) { positions.clear(); slot = 0; resetSketchEntrance(graph); queueDepth = 0; semanticWorking = false; updateWork(); }
+      if (!nodes.size) { positions.clear(); placedGroup.clear(); resetSketchEntrance(graph); queueDepth = 0; semanticWorking = false; updateWork(); }
       await draw();
       renderedRevision = message.revision;
       syncVoiceContext();
@@ -156,7 +242,8 @@ function enqueue(message) {
       if (Number.isFinite(message.queue_depth)) queueDepth = message.queue_depth;
       updateWork();
       uiMotion.status($('graph-status'), message.message || (semanticWorking ? 'Shaping your thoughts…' : 'Ready for your next thought'));
-      if (message.status === 'error' || message.status === 'unavailable') uiMotion.status($('graph-help'), message.message || 'The map could not update. Try another thought.');
+      // The status line already carries the message; the help line stays quiet to avoid repeating it.
+      if (message.status === 'error' || message.status === 'unavailable') uiMotion.status($('graph-help'), message.message ? '' : 'The map could not update. Try another thought.');
       else if (semanticWorking) uiMotion.status($('graph-help'), '');
     } else if (message.type === 'refinement') {
       cara.react('curious');
@@ -170,8 +257,8 @@ function enqueue(message) {
     uiMotion.status($('graph-help'), 'Canvas update failed. Reload to reconnect.'); console.error(error);
   });
 }
-function connectGraph(){graphSocket=new WebSocket(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/ws/graph`);graphSocket.onopen=()=>{voiceUI();uiMotion.status($('graph-help'), '');uiMotion.status($('graph-status'), 'Ready for your first thought');$('send').disabled=false;$('example').disabled=false;};graphSocket.onmessage=e=>{try{enqueue(JSON.parse(e.data));}catch{ uiMotion.status($('graph-help'), 'A map update could not be read.');}};graphSocket.onclose=()=>{stableDecorations.reset();nodeRevisions.clear();graphSessionId=null;renderedRevision=null;if(listening||starting)stopVoice('Canvas disconnected. Restart voice after it reconnects.');else voiceUI();uiMotion.status($('graph-status'), 'Reconnecting canvas…');$('send').disabled=true;$('example').disabled=true;reconnectTimer=setTimeout(connectGraph,2000);};graphSocket.onerror=()=>{uiMotion.status($('graph-help'), 'Canvas connection unavailable. Reconnecting…');};}
-function sendThought(text){if(graphSocket?.readyState!==WebSocket.OPEN){uiMotion.status($('notice'), 'Wait for the canvas to reconnect, then add your thought.');return false;}graphSocket.send(JSON.stringify({type:'text',text,mode:'append'}));return true;}
+function connectGraph(){graphSocket=new WebSocket(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/ws/graph`);graphSocket.onopen=()=>{voiceUI();uiMotion.status($('graph-help'), '');uiMotion.status($('graph-status'), 'Ready for your first thought');$('example').disabled=false;};graphSocket.onmessage=e=>{try{enqueue(JSON.parse(e.data));}catch{ uiMotion.status($('graph-help'), 'A map update could not be read.');}};graphSocket.onclose=()=>{stableDecorations.reset();nodeRevisions.clear();graphSessionId=null;renderedRevision=null;if(listening||starting)stopVoice('Canvas disconnected. Restart voice after it reconnects.');else voiceUI();uiMotion.status($('graph-status'), 'Reconnecting canvas…');$('example').disabled=true;reconnectTimer=setTimeout(connectGraph,2000);};graphSocket.onerror=()=>{uiMotion.status($('graph-help'), 'Canvas connection unavailable. Reconnecting…');};}
+function sendThought(text,speaker='user'){if(graphSocket?.readyState!==WebSocket.OPEN){uiMotion.status($('notice'), 'Wait for the canvas to reconnect, then add your thought.');return false;}graphSocket.send(JSON.stringify({type:'text',text,mode:'append',speaker}));return true;}
 function addTranscript(text, isUser = true, key) {
   if (!text?.trim()) return;
   let el = key ? document.querySelector(`[data-turn="${key}"]`) : null;
@@ -222,9 +309,13 @@ function updateEmpty(visible) {
     if (generation === emptyGeneration && !visible) el.hidden = true;
   });
 }
-for (const [id, icon] of [['fit', 'fit'], ['reset', 'reset'], ['send', 'play'], ['example', 'play']]) {
+for (const [id, icon] of [['fit', 'fit'], ['reset', 'reset'], ['example', 'play'], ['share', 'replay']]) {
   $(id).prepend(createSketchIcon(icon, { size: 18, decorative: true }));
 }
+$('share').disabled = true;
+$('share').onclick = () => void shareDialog.open(() => recorder.export());
+const shareTimer = setInterval(updateShare, 1000);
+void recorder.ready.then(ok => { shareSupported = ok; if (!ok) { $('share').hidden = true; clearInterval(shareTimer); } updateShare(); });
 const reorderLabel = document.createElement('span');
 reorderLabel.textContent = 'Rearrange';
 $('reorder').replaceChildren(reorderLabel);
@@ -253,11 +344,13 @@ $('reorder').onclick = () => {
     reorderIcon.set(false);
     $('reorder').removeAttribute('aria-busy');
     $('reorder').disabled = nodes.size === 0;
+    updateShare();
   });
 };
 $('graph').addEventListener('pointerdown', () => reorderMotion.cancel());
 graph.on('node:dragend', () => { renderChain = renderChain.then(() => refreshEdgeRoutes(graph)).catch(error => console.error(error)); });
 
+const inkTips = mountInkTooltips(document.querySelectorAll('.bar-side .quiet'), { isReduced: () => reduced });
 $('conversation-toggle').onclick = () => showConversation(!conversationOpen);
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && conversationOpen) {
@@ -265,8 +358,7 @@ document.addEventListener('keydown', event => {
     $('conversation-toggle').focus();
   }
 });
-$('text-form').onsubmit=e=>{e.preventDefault();const text=$('thought').value.trim();if(text&&sendThought(text)){addTranscript(text);$('thought').value='';}};$('thought').onkeydown=e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))$('text-form').requestSubmit();};
-$('fit').onclick=()=>void viewportMotion.fit().catch(error=>{uiMotion.status($('graph-help'), 'The map could not fit. Try again.');console.error(error);});$('reset').onclick=()=>{stableDecorations.reset();speechRibbon.clear();viewportMotion.reset();renderGeneration++;entranceController.abort();entranceController=new AbortController();demoTimers.forEach(clearTimeout);demoTimers=[];if(graphSocket?.readyState===WebSocket.OPEN){resetPending=true;renderEpoch++;graphSocket.send(JSON.stringify({type:'reset'}));uiMotion.clear([...$('transcript').children]);$('transcript').replaceChildren();uiMotion.status($('graph-help'), '');}};
+$('fit').onclick=()=>void viewportMotion.fit().catch(error=>{uiMotion.status($('graph-help'), 'The map could not fit. Try again.');console.error(error);});$('reset').onclick=()=>{recorder.reset();updateShare();if(nodes.size)void uiMotion.erase($('graph'));stableDecorations.reset();speechRibbon.clear();viewportMotion.reset();renderGeneration++;entranceController.abort();entranceController=new AbortController();demoTimers.forEach(clearTimeout);demoTimers=[];if(graphSocket?.readyState===WebSocket.OPEN){resetPending=true;renderEpoch++;graphSocket.send(JSON.stringify({type:'reset'}));uiMotion.clear([...$('transcript').children]);$('transcript').replaceChildren();uiMotion.status($('graph-help'), '');}};
 $('example').onclick=()=>{const phrases=['We are going to talk about three topics.','First design.','Second engineering.','Third launch.','For design, focus on accessibility and a clear visual hierarchy.'];$('example').disabled=true;phrases.forEach((text,i)=>demoTimers.push(setTimeout(()=>{if(sendThought(text))addTranscript(text);if(i===phrases.length-1)$('example').disabled=false;},i*2200)));};
 let voiceReady=false,starting=false,listening=false,player=null,voiceSocket=null,audioConfig={};
 // Ask the server to refresh its own context; never send client-authored labels
@@ -282,12 +374,12 @@ function syncVoiceContext() {
 }
 function graphVoiceReady(){return graphSocket?.readyState===WebSocket.OPEN&&Boolean(graphSessionId);}
 const readAudioLevels = () => ({ input: player?.audioProcessor?.getInputLevels() || [], output: player?.audioProcessor?.getOutputLevels() || [] });
-function voiceUI(){cara.update({ active: listening, connecting: starting, muted: caraMuted });micMorph.set(listening);uiMotion.voice({ starting, listening }); $('mic').classList.toggle('recording',listening);$('mic').disabled=starting||!voiceReady||!graphVoiceReady();$('mic').setAttribute('aria-label',listening?'Stop listening':'Start listening');uiMotion.status($('voice-status'), starting?'Connecting…':listening?'Listening…':voiceReady?(graphVoiceReady()?'Start talking':'Reconnecting…'):'Use text below');}
-function stopVoice(message){cara.update({fault:Boolean(message)});clearTimeout(voiceContextTimer);voiceContextTimer=null;listening=false;starting=false;const socket=voiceSocket;voiceSocket=null;if(socket){if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type:'stop'}));socket.close();}if(player){voiceOutput.detach();player.stop();player=null;}voiceUI();if(message)uiMotion.status($('notice'), message);}
-async function startVoice(){if(starting||listening||!voiceReady||!graphVoiceReady())return;starting=true;cara.update({fault:false});voiceUI();uiMotion.status($('notice'), '');try{player=new window.SyncedAudioPlayer({basePath:'/static/js',sampleRate:24000,pcmOutput:audioConfig.pcm||false,echoCancellation:true,onEncodedAudio:data=>{if(listening&&voiceSocket?.readyState===WebSocket.OPEN)voiceSocket.send(data);},onEvent:event=>{cara.voiceEvent(event);if(event==='end_tts_audio')player?.scheduleEndOfTurn();},onEndOfTurn:()=>cara.turnFinished(),onText:({text,turnIdx,isUser})=>{addTranscript(text,isUser,`${isUser?'u':'a'}${turnIdx}`);if(isUser){cara.hear();sendThought(text);}},onError:error=>stopVoice(error.message||'Voice stopped. You can keep typing.')});const activePlayer=player;const sessionId=graphSessionId;await activePlayer.start();if(!starting||player!==activePlayer||!graphVoiceReady()||graphSessionId!==sessionId){activePlayer.stop();return;}voiceOutput.attach(activePlayer.audioProcessor);voiceSocket=new WebSocket(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/ws/chat`);const socket=voiceSocket;socket.onopen=()=>{if(socket!==voiceSocket)return;socket.send(JSON.stringify({type:'start',graph_session_id:graphSessionId}));starting=false;listening=true;syncVoiceContext();voiceUI();};socket.onmessage=e=>player?.handleMessage(e.data);socket.onerror=()=>stopVoice('Voice connection failed. You can keep typing.');socket.onclose=()=>{if(socket===voiceSocket)stopVoice('Voice disconnected. Your map is still here.');};}catch(e){stopVoice(e.name==='NotAllowedError'?'Allow microphone access to talk, or keep typing.':`Voice unavailable: ${e.message}`);}}
+function voiceUI(){splash.setVoice({configured:voiceReady,ready:voiceReady&&graphVoiceReady()});cara.update({ active: listening, connecting: starting, muted: caraMuted });micMorph.set(listening);uiMotion.voice({ starting, listening }); $('mic').classList.toggle('recording',listening);$('mic').disabled=starting||!voiceReady||!graphVoiceReady();$('mic').setAttribute('aria-label',listening?'Stop listening':'Start listening');uiMotion.status($('voice-status'), starting?'Connecting…':listening?'Listening…':voiceReady?(graphVoiceReady()?'Start talking':'Reconnecting…'):'Voice unavailable');}
+function stopVoice(message){cara.update({fault:Boolean(message)});clearTimeout(voiceContextTimer);voiceContextTimer=null;listening=false;starting=false;const socket=voiceSocket;voiceSocket=null;if(socket){if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type:'stop'}));socket.close();}if(player){voiceOutput.detach();player.stop();player=null;}voiceUI();if(message){uiMotion.status($('notice'), message);splash.fail(message);}}
+async function startVoice(){if(starting||listening||!voiceReady||!graphVoiceReady()){splash.fail('Voice is still warming up. Try again in a moment.');return;}starting=true;cara.update({fault:false});voiceUI();uiMotion.status($('notice'), '');try{player=new window.SyncedAudioPlayer({basePath:'/static/js',sampleRate:24000,pcmOutput:audioConfig.pcm||false,echoCancellation:true,onEncodedAudio:data=>{if(listening&&voiceSocket?.readyState===WebSocket.OPEN)voiceSocket.send(data);},onEvent:event=>{cara.voiceEvent(event);if(event==='end_tts_audio')player?.scheduleEndOfTurn();},onEndOfTurn:()=>cara.turnFinished(),onText:({text,turnIdx,isUser})=>{addTranscript(text,isUser,`${isUser?'u':'a'}${turnIdx}`);if(isUser)cara.hear();sendThought(text,isUser?'user':'assistant');},onError:error=>stopVoice(error.message||'Voice stopped. Tap the mic to try again.')});const activePlayer=player;const sessionId=graphSessionId;await activePlayer.start();if(!starting||player!==activePlayer||!graphVoiceReady()||graphSessionId!==sessionId){activePlayer.stop();return;}voiceOutput.attach(activePlayer.audioProcessor);void splash.enter();voiceSocket=new WebSocket(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/ws/chat`);const socket=voiceSocket;socket.onopen=()=>{if(socket!==voiceSocket)return;socket.send(JSON.stringify({type:'start',graph_session_id:graphSessionId}));starting=false;listening=true;syncVoiceContext();voiceUI();};socket.onmessage=e=>player?.handleMessage(e.data);socket.onerror=()=>stopVoice('Voice connection failed. Tap the mic to try again.');socket.onclose=()=>{if(socket===voiceSocket)stopVoice('Voice disconnected. Your map is still here.');};}catch(e){stopVoice(e.name==='NotAllowedError'?'Allow microphone access to talk with Cara.':`Voice unavailable: ${e.message}`);}}
 $('mic').onclick=()=>listening?stopVoice():startVoice();
-async function readiness(){try{const [r,a]=await Promise.all([fetch('/api/readiness'),fetch('/api/audio-config')]);const ready=await r.json();audioConfig=await a.json();voiceReady=Boolean(ready.voice_ready)&&Boolean(window.SyncedAudioPlayer);if(!voiceReady)$('notice').textContent='Voice is not configured yet. Type a thought to start your map.';}catch{$('notice').textContent='Voice setup unavailable. You can still build your map with text.';}voiceUI();}
-window.addEventListener('pagehide',()=>{cara.dispose();stableDecorations.dispose();speechRibbon.dispose();illustrationLayer.dispose();reorderMotion.dispose();uiMotion.dispose();viewportMotion.dispose();reducedMedia.removeEventListener('change', reducedChanged);entranceController.abort();clearTimeout(reconnectTimer);demoTimers.forEach(clearTimeout);if(graphSocket){graphSocket.onclose=null;graphSocket.close();}stopVoice();});
+async function readiness(){try{const [r,a]=await Promise.all([fetch('/api/readiness'),fetch('/api/audio-config')]);const ready=await r.json();audioConfig=await a.json();voiceReady=Boolean(ready.voice_ready)&&Boolean(window.SyncedAudioPlayer);if(!voiceReady)$('notice').textContent='Voice is not configured yet.';}catch{$('notice').textContent='Voice setup unavailable. Reload to try again.';}voiceUI();}
+window.addEventListener('pagehide',()=>{inkTips.dispose();clearInterval(shareTimer);recorder.dispose();shareDialog.dispose();cara.dispose();stableDecorations.dispose();speechRibbon.dispose();illustrationLayer.dispose();reorderMotion.dispose();uiMotion.dispose();viewportMotion.dispose();reducedMedia.removeEventListener('change', reducedChanged);entranceController.abort();clearTimeout(reconnectTimer);demoTimers.forEach(clearTimeout);if(graphSocket){graphSocket.onclose=null;graphSocket.close();}stopVoice();});
 function reducedChanged() {
   reduced = reducedMedia.matches;
   if (reduced) { illustrationLayer.reduce(); speechRibbon.reduce(); }
@@ -296,4 +388,4 @@ function reducedChanged() {
   renderChain = renderChain.then(() => draw()).catch(console.error);
 }
 reducedMedia.addEventListener('change', reducedChanged);
-renderChain = draw();connectGraph();readiness();uiMotion.intro();
+renderChain = draw();connectGraph();readiness();
