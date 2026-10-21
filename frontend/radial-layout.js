@@ -187,13 +187,24 @@ function looseAnchors(list, parent) {
  */
 export function withContainsEdges(nodes, edges) {
   const ids = new Set(nodes.map((node) => node.id));
-  const visible = edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target));
+  // At most one arrow per pair of cards, whichever direction it was declared.
+  const pair = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  const seen = new Set();
+  const visible = [];
+  for (const edge of edges) {
+    if (!ids.has(edge.source) || !ids.has(edge.target) || edge.source === edge.target) continue;
+    const key = pair(edge.source, edge.target);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    visible.push(edge);
+  }
   for (const node of nodes) {
     const parentId = node.parent_id;
     if (parentId === undefined || parentId === null || parentId === node.id || !ids.has(parentId)) continue;
-    if (!visible.some((edge) => edge.source === parentId && edge.target === node.id)) {
-      visible.push({ id: `contains:${parentId}:${node.id}`, source: parentId, target: node.id });
-    }
+    const key = pair(parentId, node.id);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    visible.push({ id: `contains:${parentId}:${node.id}`, source: parentId, target: node.id });
   }
   return visible;
 }

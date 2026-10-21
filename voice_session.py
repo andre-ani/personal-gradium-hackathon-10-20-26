@@ -60,75 +60,148 @@ class ReactionWindow:
 
 NORMAL_VOICE_WORDS = {'normal', 'default', 'usual', 'original', 'regular', 'back to normal',
                       'your normal voice', 'my normal voice', 'normal voice', 'your voice', 'cara'}
+MALE_WORDS = ('man', 'male', 'guy', 'boy', 'dude', 'gentleman', 'dad', 'grandpa', 'king', 'masculine')
+FEMALE_WORDS = ('woman', 'female', 'lady', 'girl', 'mom', 'grandma', 'feminine')
+
+
+def _voice(name, voice_id, language, accent, character, keywords, male=False, default=False):
+    gender = MALE_WORDS if male else () if default else FEMALE_WORDS
+    return {'name': name, 'voice_id': voice_id, 'language': language, 'accent': accent,
+            'character': character, 'keywords': keywords + gender}
+
+
+# Hand-picked Gradium flagship voices (gradbot.flagship_voices()), each with a clear,
+# distinct character. A voice only speaks its own language well, so each language has
+# its own default and picks only come from the current language. The first voice per
+# language is the default; on ties the earlier voice wins.
+VOICES = [
+    _voice('Sunnie', 'YVzbrdWnnu9FgRn5', 'en', 'American', 'warm and bright', ('american',), default=True),
+    _voice('Tilly', '4rdlkbxRv4m3UQTW', 'en', 'British', 'friendly British woman',
+           ('british', 'english accent', 'uk', 'london', 'england', 'posh', 'queen', 'princess', 'tea')),
+    _voice('Freddie', 's_k3kLBbgeK9-xUg', 'en', 'British', 'easy-going British man',
+           ('british', 'english accent', 'uk', 'london', 'england', 'posh', 'butler', 'gentleman'), male=True),
+    _voice('Garrett', 'POBHtemksfWQbng0', 'en', 'American', 'deep, low and gruff',
+           ('deep', 'low', 'gruff', 'rough', 'growl', 'pirate', 'villain', 'monster', 'giant', 'bear',
+            'cowboy', 'serious', 'cool', 'smooth', 'bass'), male=True),
+    _voice('Sterling', '6MFfc37kq0sBjBjy', 'en', 'American', 'big and dramatic',
+           ('dramatic', 'theatrical', 'movie', 'trailer', 'narrator', 'storyteller', 'epic', 'actor',
+            'wizard', 'announcer', 'radio', 'robot'), male=True),
+    _voice('Russell', '_6Aslh2DxfmnRLmP', 'en', 'American', 'loud, pumped-up coach',
+           ('energetic', 'energy', 'hype', 'excited', 'coach', 'sports', 'loud', 'pumped', 'superhero',
+            'fast', 'motivating', 'motivational'), male=True),
+    _voice('Zoey', 'NbpkqMVS3CJeq2j8', 'en', 'American', 'playful teen',
+           ('teen', 'young', 'kid', 'child', 'playful', 'silly', 'cartoon', 'fun', 'valley', 'gen z')),
+    _voice('Saoirse', 'gqn4ytOULe-TQfjl', 'en', 'Irish', 'warm Irish woman',
+           ('irish', 'ireland', 'dublin', 'leprechaun', 'celtic')),
+    _voice('Declan', 'I7GYfpcKbafFrYUv', 'en', 'Irish', 'calm Irish man',
+           ('irish', 'ireland', 'dublin', 'calm', 'soft', 'sleepy', 'slow', 'gentle', 'relaxed', 'soothing'),
+           male=True),
+    _voice('Solène', 'YhIHaAfQ0cQPDV9R', 'fr', 'French', 'bright and warm', ('french',), default=True),
+    _voice('Gaspard', 'iEu63s1rhn_kegTr', 'fr', 'French', 'warm, calm man',
+           ('deep', 'low', 'gruff', 'pirate', 'calm', 'serious', 'slow', 'sleepy', 'cool'), male=True),
+    _voice('Jules', 'YKeBw3OV1RgpdhLh', 'fr', 'French', 'lively, excited man',
+           ('energetic', 'excited', 'hype', 'loud', 'dramatic', 'coach', 'fast'), male=True),
+    _voice('Mélanie', 'xynYWquoAsrvM7UY', 'fr', 'Québécois', 'friendly Québécois woman',
+           ('quebec', 'québec', 'canada', 'canadian', 'montreal')),
+    _voice('Femke', 'W4IqRNmU0pbxrKyn', 'de', 'German', 'bright and warm', ('german',), default=True),
+    _voice('Henrik', 'yyS1KYWs6mXoEw7D', 'de', 'German', 'easy-going man',
+           ('deep', 'low', 'gruff', 'pirate', 'calm', 'serious', 'slow', 'sleepy'), male=True),
+    _voice('Wastl', '2cx941cbFIXRc0ok', 'de', 'Bavarian', 'funny Bavarian man',
+           ('bavarian', 'bavaria', 'munich', 'funny', 'silly', 'playful', 'energetic', 'excited'), male=True),
+    _voice('Sophie', 'TXbEUrHXNFlYBBKb', 'de', 'Austrian', 'easy-going Austrian woman',
+           ('austrian', 'austria', 'vienna')),
+    _voice('Lucía-Sol', '3p0eIGbkmny71GlA', 'es', 'Castilian', 'bouncy and bright', ('spanish', 'spain'), default=True),
+    _voice('Iker', 't-_TS1e-0GzDAX02', 'es', 'Castilian', 'easy-going man',
+           ('deep', 'low', 'gruff', 'pirate', 'calm', 'serious', 'slow', 'sleepy'), male=True),
+    _voice('Ximena', 'VDwnGxAo68C8U8vC', 'es', 'Mexican', 'playful Mexican woman',
+           ('mexican', 'mexico', 'latin', 'playful', 'storyteller')),
+    _voice('Diego', 'n7vovxcDTVG4gClo', 'es', 'Mexican', 'lively Mexican man',
+           ('mexican', 'mexico', 'latin', 'energetic', 'excited', 'dramatic', 'loud'), male=True),
+    _voice('Rafaela', '6k6cRt7QJfm5ChrH', 'pt', 'Brazilian', 'bright and bouncy', ('brazil', 'brazilian'), default=True),
+    _voice('Davi', 'NuUr_x5V90hSHzCJ', 'pt', 'Brazilian', 'upbeat man',
+           ('deep', 'low', 'gruff', 'pirate', 'energetic', 'excited', 'serious'), male=True),
+    _voice('Sofia', 'tWO-Q6DxWPj7syQA', 'pt', 'European Portuguese', 'calm Portuguese woman',
+           ('portugal', 'lisbon', 'european', 'calm', 'soft', 'slow')),
+]
+VOICES_BY_ID = {voice['voice_id']: voice for voice in VOICES}
+
+
+def _words(text):
+    return ' ' + ''.join(ch if ch.isalnum() else ' ' for ch in text.lower()) + ' '
+
+
+def _score(voice, words):
+    return sum(' ' + key + ' ' in words for key in voice['keywords'])
+
+
+def pick_voice(description, language):
+    """The closest curated voice in `language` for a short wish, without an LLM.
+
+    Returns (voice, elsewhere): when nothing fits this language but a voice in another
+    language does (a British accent while speaking French), elsewhere is that language.
+    """
+    words = _words(description)
+    choices = [voice for voice in VOICES if voice['language'] == language]
+    best = max(choices, key=lambda voice: _score(voice, words))  # max keeps the first of equal scores.
+    if _score(best, words):
+        return best, None
+    # No keyword hit here: a stable, non-default pick, so the same wish gives the same voice.
+    others = choices[1:]
+    anywhere = max(VOICES, key=lambda voice: _score(voice, words))
+    return others[sum(map(ord, description.lower())) % len(others)], \
+        anywhere['language'] if _score(anywhere, words) else None
 
 
 class VoiceStyle:
-    """One session's spoken language and voice. Designed voices are deleted on close.
+    """One session's spoken language and curated catalog voice.
 
-    Gradbot applies a changed voice_id/language from the next turn after send_config:
-    it opens a fresh TTS stream per turn and restarts STT with the new language.
+    Gradbot applies a changed voice_id when it opens the next TTS stream (one per LLM
+    generation) and restarts STT when the language changes, so callers apply a change
+    only between turns; see handle_session's configure(update=...).
     """
     MAX_DESCRIPTION = 300
 
-    def __init__(self, default_voice, client_factory):
+    def __init__(self, default_voice):
         self.default_voice = default_voice
         self.voice_id = default_voice
-        self.description = None  # Set while a designed voice is active.
         self.language = 'en'
-        self._client_factory = client_factory
-        self._client = None
-        self._created = []
-        self._lock = asyncio.Lock()
 
     @property
     def language_name(self):
         return LANGUAGE_NAMES[self.language]
 
-    def set_language(self, code):
+    @property
+    def voice(self):
+        return VOICES_BY_ID[self.voice_id]
+
+    def default_for(self, language):
+        return self.default_voice if language == 'en' else next(
+            voice['voice_id'] for voice in VOICES if voice['language'] == language)
+
+    def choose_language(self, code):
+        """Validate a language; returns (code, voice_id). Voices follow the language: a
+        voice only speaks its own language well, so a switch picks that language's default."""
         code = str(code or '').strip().lower()
         if code not in LANGUAGE_NAMES:
             raise ValueError(f'Unsupported language: {code or "none"}')
-        self.language = code
-        return self.language_name
+        return code, self.default_for(code)
 
-    def restore(self):
-        self.voice_id, self.description = self.default_voice, None
-
-    async def change_voice(self, description, back_to_normal=False):
-        """Design a voice from a short description, or restore the default. Returns 'normal' or 'new'."""
+    def choose_voice(self, description, back_to_normal=False):
+        """Pick a voice for a short wish in the current language. Returns (voice, elsewhere)."""
         description = ' '.join(str(description or '').split())[:self.MAX_DESCRIPTION]
         if back_to_normal or description.lower().strip(' .!') in NORMAL_VOICE_WORDS:
-            self.restore()
-            return 'normal'
+            return VOICES_BY_ID[self.default_for(self.language)], None
         if not description:
             raise ValueError('Describe the voice to try.')
-        async with self._lock:
-            await self._delete(keep=self.voice_id)  # Free quota; the current voice may still be speaking.
-            if self._client is None:
-                self._client = self._client_factory()
-            drafts = await asyncio.wait_for(self._client.voice_generate(
-                description, language=self.language, wait=True, timeout=20, poll_interval=0.5), 25)
-            voice = await self._client.voice_from_embedding(
-                drafts['embeddings'][0]['embedding_id'], name=f'thread-cara-{random.getrandbits(32):08x}',
-                description=description[:200])
-            self._created.append(voice['uid'])
-            self.voice_id, self.description = voice['uid'], description
-            return 'new'
+        return pick_voice(description, self.language)
 
-    async def _delete(self, keep=None):
-        for uid in [uid for uid in self._created if uid != keep]:
-            self._created.remove(uid)
-            try:
-                await self._client.voice_delete(uid)
-            except Exception:
-                pass  # Best effort; a leftover voice only costs quota.
-
-    async def close(self):
-        self.restore()
-        if self._created:
-            await self._delete()
+    def apply(self, language, voice_id):
+        if VOICES_BY_ID[voice_id]['language'] != language:
+            raise ValueError('That voice does not speak this language.')
+        self.language, self.voice_id = language, voice_id
 
 
+SWITCH_WAIT_S = 4  # Longest wait for the current reply to finish before a voice/language switch.
 IDLE_FIRST_S = 15  # Then 30s, then 60s; stop after IDLE_MAX unanswered nudges.
 IDLE_MAX = 3
 DECORATION_SPEAK_CHANCE = 0.4  # Otherwise stay quiet; the avatar already reacts.
@@ -172,19 +245,31 @@ async def handle_session(websocket, *, config, on_start, on_config, on_tool_call
     idle_streak = 0  # Unanswered idle nudges; reset when the user speaks.
     last_nudge = -math.inf
     window = ReactionWindow()
+    speech_idle = asyncio.Event()  # Cleared while a reply is generated and synthesized.
+    speech_idle.set()
 
     async def send_json(value):
         async with send_lock:
             await websocket.send_json(value)
 
-    async def configure(message=None):
+    async def configure(message=None, *, update=None):
+        """Send a fresh config. With `update` (a voice or language switch), first let the
+        current reply finish (bounded), then apply it under the lock right before sending, so
+        no concurrent refresh can push the new voice or language mid-utterance."""
         nonlocal armed
-        fresh = on_config(message or {})
-        if armed is not None and armed[0] == 'decoration' and on_reaction_valid is not None and not on_reaction_valid(armed[1]):
-            armed = None
-        if armed is not None:
-            fresh = (arm_reaction if armed[0] == 'decoration' else arm_idle)(fresh, armed[1])
+        if update is not None:
+            try:
+                await asyncio.wait_for(speech_idle.wait(), SWITCH_WAIT_S)
+            except asyncio.TimeoutError:
+                pass  # Gradbot binds the voice when it opens the next TTS stream anyway.
         async with config_lock:
+            if update is not None:
+                update()
+            fresh = on_config(message or {})
+            if armed is not None and armed[0] == 'decoration' and on_reaction_valid is not None and not on_reaction_valid(armed[1]):
+                armed = None
+            if armed is not None:
+                fresh = (arm_reaction if armed[0] == 'decoration' else arm_idle)(fresh, armed[1])
             await input_handle.send_config(fresh)
 
     async def receive_input():
@@ -213,6 +298,10 @@ async def handle_session(websocket, *, config, on_start, on_config, on_tool_call
             now = time.monotonic()
             window.observe(msg, now)
             event = getattr(getattr(msg, 'event', None), 'event_type', None)
+            if event == 'llm_started':
+                speech_idle.clear()
+            elif event in ('end_tts_audio', 'interrupted'):
+                speech_idle.set()
             if msg.msg_type == 'stt_text':
                 idle_streak = 0
             if armed is not None and (msg.msg_type == 'stt_text' or event in ('llm_started', 'interrupted')):

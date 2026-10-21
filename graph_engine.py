@@ -10,13 +10,49 @@ _NUM = r'(?:1[0-2]|[1-9]|one|two|three|four|five|six|seven|eight|nine|ten|eleven
 _COUNT = re.compile(r'\b(' + _NUM + r')\s+(?:topics?|points?|ideas?|things?|items?|steps?|subjects?)\b', re.I)
 # Mirrors frontend/palette.js. Blue is primary and always marks the first group.
 PALETTE_KEYS = ('blue', 'teal', 'green', 'ochre', 'terracotta', 'rose', 'plum', 'slate')
-_GROUP = re.compile(r'^[A-Za-z0-9_-]{1,80}$')
+# Cara's lines feed interpretation only when the user's latest line asked her
+# to explain or map something; otherwise her chatter would become cards.
+_ASKS_CARA = re.compile(r'\b(?:map|explain|brainstorm|teach|write|tell me about|walk me through|break\b.{0,24}\bdown)', re.I)
+_LABEL_DROP = re.compile(r'[^a-z0-9 ]+')
 # Mirrors DECORATION_TYPES in frontend/stable-decorations.js. Only washi tape
 # has a second stage; every doodle completes at level 1.
 DECORATION_KINDS = ('washi_tape', 'stars', 'sparkle', 'heart', 'burst', 'underline', 'circle')
 # Transcript lines name who spoke so interpretation can tell user ideas from
 # Cara's explanations and chatter.
 SPEAKERS = {'user': 'You', 'assistant': 'Cara'}
+
+
+def _label_tokens(label):
+    """Normalized label words: case, punctuation, plurals and 'and'/'&' ignored."""
+    words = _LABEL_DROP.sub(' ', str(label).lower().replace('&', ' and ')).split()
+    tokens = []
+    for word in words:
+        if word == 'and':
+            continue
+        if len(word) > 4 and word.endswith('ies'):
+            word = word[:-3] + 'y'
+        elif len(word) > 3 and word.endswith('s') and not word.endswith('ss'):
+            word = word[:-1]
+        tokens.append(word)
+    return tokens
+
+
+def _same_label(a, b):
+    ta, tb = _label_tokens(a), _label_tokens(b)
+    if not ta or not tb:
+        return False
+    if ta == tb:
+        return True
+    sa, sb = set(ta), set(tb)
+    return len(sa & sb) / len(sa | sb) >= .8
+
+
+def _join_line(text, previous, speaker, chunk):
+    # Streamed chunks from one speaker share a line; a new speaker starts one.
+    if speaker != previous:
+        chunk = f'{SPEAKERS[speaker]}: {chunk}'
+        return ((text + '\n' + chunk) if text else chunk)[-32000:]
+    return (text + ' ' + chunk).strip()[-32000:]
 
 
 class GraphSession:
@@ -32,6 +68,12 @@ class GraphSession:
         self.text = ''
         self._speaker = None
         self._user_text = ''
+        # Refinement input: user lines, plus Cara's lines only while gated open.
+        self._refine_text = ''
+        self._refine_speaker = None
+        self._last_user_line = ''
+        self._cara_gate = False
+        self._aliases = {}
         self._epoch = 0
         self._last_semantic = None
         self._queue = deque()
@@ -158,17 +200,23 @@ class GraphSession:
         if mode == 'replace':
             self._epoch += 1
             self.text, self._speaker, self._user_text = '', None, ''
-        # Streamed chunks from one speaker share a line; a new speaker starts one.
-        if speaker != self._speaker:
-            text = f'{SPEAKERS[speaker]}: {text}'
-            self.text = (self.text + '\n' + text) if self.text else text
-            self._speaker = speaker
-        else:
-            self.text = (self.text + ' ' + text).strip()
-        self.text = self.text[-32000:]
-        self.meaning_status = 'pending'
-        self.meaning_message = None
-        self.question = None
+            self._refine_text, self._refine_speaker, self._last_user_line, self._cara_gate = '', None, '', False
+        new_line = speaker != self._speaker
+        self.text = _join_line(self.text, self._speaker, speaker, text)
+        self._speaker = speaker
+        if speaker == 'user':
+            # A new user line closes the gate until Cara answers it.
+            self._last_user_line = text if new_line else (self._last_user_line + ' ' + text)[-4000:]
+            self._cara_gate = False
+        elif new_line:
+            self._cara_gate = bool(_ASKS_CARA.search(self._last_user_line))
+        if speaker == 'user' or self._cara_gate:
+            self._refine_text = _join_line(self._refine_text, self._refine_speaker, speaker, text)
+            self._refine_speaker = speaker
+            self.meaning_status = 'pending'
+            self.meaning_message = None
+            self.question = None
+            self._wake.set()
         # Only the user's own counts reserve slots; Cara's chatter ("those two
         # ideas") must not create blank boxes.
         if speaker == 'user':
@@ -180,7 +228,6 @@ class GraphSession:
             self._ensure_slots(count)
         # Counts may reserve space immediately. Only semantic interpretation may
         # name a concept; copying ordinal/list fragments produces a transcript.
-        self._wake.set()
 
     async def request_refinement(self, concept=None):
         if self._closed:
@@ -217,41 +264,26 @@ class GraphSession:
         return key
 
     def _classify(self, ident, incoming, merged, old):
-        """Instant, network-free grouping: explicit group, else keep, else inherit."""
-        explicit = incoming.get('group')
+        """Instant, network-free colour from the tree only; model groups are ignored."""
         parent = merged.get('parent_id')
         # `near` is a placement-only hint for a parentless (loose) node.
         near = merged.get('near')
         if parent or not isinstance(near, str) or near == ident or near not in self._desired:
             merged.pop('near', None)
             near = None
-        if near:
-            # A loose node is not part of its neighbour's branch: its own group,
-            # in a colour distinct from the neighbour's.
-            group = old.get('group') if old.get('group') == ident else ident
-            merged['group'] = group
-            hint = incoming.get('palette')
-            merged['palette'] = self._palette_for(group, hint if isinstance(hint, str) else None,
-                                                  avoid=self._desired[near].get('palette'))
-            return
         parent_node = self._desired.get(parent, {}) if parent != ident else {}
-        # Colour by branch: a root topic's direct children each start their own
-        # group, and everything deeper inherits its branch's group.
-        branch_head = bool(parent_node) and not parent_node.get('parent_id')
-        if isinstance(explicit, str) and _GROUP.fullmatch(explicit) and not (branch_head and explicit == parent):
-            group = explicit
-        elif branch_head:
-            group = old.get('group') if old.get('group') not in (None, parent) else ident
+        if not parent_node or not parent_node.get('parent_id'):
+            # Roots, loose nodes and each direct child of a root (a branch) are
+            # their own group.
+            group = ident
         else:
-            group = old.get('group')
-            parent_group = parent_node.get('group')
-            # A self-rooted node that gains a parent joins that parent's group.
-            if parent_group and (group is None or (group == ident and parent != old.get('parent_id'))):
-                group = parent_group
-            group = group or ident
+            # Deeper cards inherit their first-level branch's group.
+            group = parent_node.get('group') or parent
         merged['group'] = group
         hint = incoming.get('palette')
-        merged['palette'] = self._palette_for(group, hint if isinstance(hint, str) else None)
+        # A loose node avoids its neighbour's colour when it can.
+        avoid = self._desired[near].get('palette') if near else None
+        merged['palette'] = self._palette_for(group, hint if isinstance(hint, str) else None, avoid=avoid)
 
     def _enqueue(self, op, layer):
         kind = op.get('type')
@@ -285,7 +317,13 @@ class GraphSession:
                 return
             if edge['source'] not in self._desired or edge['target'] not in self._desired:
                 return
-            if edge['id'] in self.edges or any(q.get('edge', {}).get('id') == edge['id'] for q, _ in self._queue):
+            pair = {edge['source'], edge['target']}
+            if len(pair) < 2:
+                return
+            queued = [q['edge'] for q, _ in self._queue if q.get('type') == 'add_edge']
+            # One card pair gets one connector, whatever its id or direction.
+            if any(e['id'] == edge['id'] or {e['source'], e['target']} == pair
+                   for e in (*self.edges.values(), *queued)):
                 return
         else:
             return
@@ -319,6 +357,27 @@ class GraphSession:
                               'layer': layer, 'queue_depth': len(self._queue),
                               'node_revisions': {ident: self.revision for ident in affected}})
 
+    def _alias(self, ident):
+        return self._aliases.get(ident, ident)
+
+    def _ancestors(self, ident):
+        seen = set()
+        while isinstance(ident, str) and ident in self._desired and ident not in seen:
+            seen.add(ident)
+            ident = self._desired[ident].get('parent_id')
+        return seen
+
+    def _duplicate_of(self, node):
+        """An existing card with the same idea, never one in the node's own lineage."""
+        label = node.get('label')
+        if not isinstance(label, str):
+            return None
+        lineage = self._ancestors(node.get('parent_id'))
+        for ident, existing in self._desired.items():
+            if ident not in lineage and _same_label(label, existing.get('label', '')):
+                return ident
+        return None
+
     def _enqueue_meaning(self, op, basis):
         # Prefix results can add meaning during continued speech, but cannot
         # rewrite nodes changed since their interpretation began.
@@ -326,9 +385,26 @@ class GraphSession:
             node = op.get('node')
             if not isinstance(node, dict):
                 return
+            node = dict(node)
+            for key in ('id', 'parent_id', 'near'):
+                if isinstance(node.get(key), str):
+                    node[key] = self._alias(node[key])
             ident = node.get('id')
-            current = self._desired.get(ident)
-            if current != basis.get(ident):
+            duplicate = None
+            if op.get('type') == 'add_node' and isinstance(ident, str) and ident not in self._desired:
+                duplicate = self._duplicate_of(node)
+            if duplicate:
+                # Same idea as an existing card: merge only fields it lacks.
+                self._aliases[ident] = duplicate
+                existing = self._desired[duplicate]
+                node = {key: value for key, value in node.items()
+                        if key not in ('id', 'label', 'status') and value is not None
+                        and existing.get(key) in (None, '')}
+                if not node:
+                    return
+                ident = node['id'] = duplicate
+                op = {'type': 'update_node', 'node': node}
+            elif self._desired.get(ident) != basis.get(ident):
                 return
             parent = node.get('parent_id')
             if parent is not None:
@@ -339,7 +415,8 @@ class GraphSession:
                 # Leave space for both operations so an accepted child is connected.
                 if len(self._queue) > 158:
                     return
-            node = dict(node, status='provisional')
+            if not duplicate:
+                node = dict(node, status='provisional')
             self._enqueue(dict(op, node=node), 'meaning')
             accepted = self._desired.get(ident)
             # `palette` is only a hint for a new group, so it may be overridden.
@@ -351,6 +428,8 @@ class GraphSession:
             edge = op.get('edge', {})
             if not isinstance(edge, dict):
                 return
+            edge = dict(edge, **{key: self._alias(edge[key]) for key in ('source', 'target') if isinstance(edge.get(key), str)})
+            op = dict(op, edge=edge)
             for key in ('source', 'target'):
                 ident = edge.get(key)
                 if ident in basis and self._desired.get(ident) != basis[ident]:
@@ -363,7 +442,7 @@ class GraphSession:
             self._wake.clear()
             await asyncio.sleep(self.semantic_delay)
             self._wake.clear()
-            epoch, text = self._epoch, self.text
+            epoch, text = self._epoch, self._refine_text
             prefix = (epoch, text)
             if prefix == self._last_semantic:
                 continue
@@ -372,6 +451,7 @@ class GraphSession:
             graph = self.snapshot()
             graph['nodes'] = [dict(node) for node in basis.values()]
             graph['focus'] = self.refinement_focus
+            graph['aliases'] = dict(self._aliases)
             classify, refine = self.classify, self.refine
             if refine is None:
                 try:
@@ -422,6 +502,8 @@ class GraphSession:
         self.text = ''
         self._speaker = None
         self._user_text = ''
+        self._refine_text, self._refine_speaker, self._last_user_line, self._cara_gate = '', None, '', False
+        self._aliases.clear()
         self.meaning_status = 'idle'
         self.meaning_message = None
         self.question = None

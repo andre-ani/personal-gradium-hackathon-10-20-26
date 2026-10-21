@@ -26,7 +26,7 @@ pnpm build
 uv run --env-file .env uvicorn main:app --host 127.0.0.1 --port 8000 --ws wsproto --reload
 ```
 
-Open [localhost:8000](http://127.0.0.1:8000). Try typed graph input, for example: “Three topics: design, voice, and graphs.” Allow microphone access for live voice. Cara speaks American English in the Gradium flagship voice Sunnie (`YVzbrdWnnu9FgRn5`). Ask her to switch to French, Spanish, German, or Portuguese, or to try a new voice ("a calm British accent"); "back to normal" restores Sunnie. Designed voices are deleted when the voice session ends.
+Open [localhost:8000](http://127.0.0.1:8000). Try typed graph input, for example: “Three topics: design, voice, and graphs.” Allow microphone access for live voice. Cara speaks American English in the Gradium flagship voice Sunnie (`YVzbrdWnnu9FgRn5`). Ask her to switch to French, Spanish, German, or Portuguese, or to sound different ("British", "deep and gruff", "a pirate"): she picks the closest of a few built-in Gradium catalog voices for the current language (table in `voice_session.py`); "back to normal" restores Sunnie.
 
 Fill `.env` with valid `GRADIUM_API_KEY`, `LLM_API_KEY`, `LLM_BASE_URL`, and `LLM_MODEL` for live conversations. Graph interpretation uses `GRAPH_MODEL` (falling back to `LLM_MODEL`) and needs a configured LLM. Jev is not required in the live graph path; explicit counts can still reserve blank topic slots without a provider. See `.env.example` for configuration. Credentials stay server-side; `.env` is ignored by Git. Provider-backed voice and semantic integration require live verification with configured credentials.
 

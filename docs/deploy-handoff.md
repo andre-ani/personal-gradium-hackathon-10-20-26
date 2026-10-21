@@ -9,7 +9,7 @@ Goal: get the current `main` running at a public **HTTPS** URL where someone can
 - Browser ↔ server:
   - HTTP: `/`, `/static/*`, `/api/readiness`, `/api/audio-config`, `/api/illustrations/{id}`.
   - WebSockets: `/ws/chat` (voice, gradbot/Gradium audio) and `/ws/graph` (map patches).
-- Outbound calls from the server: Gradium (speech in/out, Voice Design), an OpenAI-compatible LLM endpoint (OpenRouter today) for Cara, graph refinement and image generation.
+- Outbound calls from the server: Gradium (speech in/out), an OpenAI-compatible LLM endpoint (OpenRouter today) for Cara, graph refinement and image generation.
 
 ## Requirements
 
@@ -35,7 +35,7 @@ uv run uvicorn main:app --host 0.0.0.0 --port "${PORT:-8000}" --ws wsproto
 
 | Variable | Needed | Purpose |
 | --- | --- | --- |
-| `GRADIUM_API_KEY` | yes | Gradium speech-to-text, Cara's voice (Sunnie), Voice Design |
+| `GRADIUM_API_KEY` | yes | Gradium speech-to-text, Cara's voices (Sunnie plus built-in catalog voices) |
 | `LLM_API_KEY` | yes | OpenAI-compatible key (OpenRouter today) |
 | `LLM_BASE_URL` | yes | e.g. the OpenRouter `/api/v1` base URL |
 | `LLM_MODEL` | yes | Cara's conversation model |
@@ -58,7 +58,7 @@ Copy the values from the owner's local `.env` (do not print them in logs).
 ## Known limits and risks
 
 - Memory-only state; one instance only (see above).
-- Gradium free tier: ~5 custom voices; Voice Design reports an error when full. Free tier is non-commercial.
+- Gradium free tier is non-commercial. Voice changes use built-in catalog voices, so no custom-voice quota is used.
 - Each spoken turn costs LLM calls (refinement) and some images (~3–5 s each). Watch provider spend.
 - If refinement fails with HTTP 400, check server logs for the provider message (it is logged server-side only).
 - The browser preview tools block the mic; test in a real browser.

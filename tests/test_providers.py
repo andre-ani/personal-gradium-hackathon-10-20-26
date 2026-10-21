@@ -92,28 +92,35 @@ class RefinementContractTests(unittest.TestCase):
             with self.subTest(operation=operation), self.assertRaises(ProviderUnavailable):
                 self.parse(operation)
 
-    def test_group_and_palette_refinement_is_validated(self):
+    def test_model_group_is_ignored_and_palette_hint_validated(self):
         result = self.parse({'type': 'add_node', 'node': {'id': 'child', 'label': 'Child', 'kind': 'idea',
                              'status': 'named', 'parent_id': 'topic-1', 'group': 'topic-1', 'palette': None}})
-        self.assertEqual(result['node']['group'], 'topic-1')
-        self.assertNotIn('palette', result['node'])
-        result = self.parse({'type': 'update_node', 'node': {'id': 'topic-1', 'group': None, 'palette': 'teal'}})
         self.assertNotIn('group', result['node'])
+        self.assertNotIn('palette', result['node'])
+        result = self.parse({'type': 'update_node', 'node': {'id': 'topic-1', 'palette': 'teal'}})
         self.assertEqual(result['node']['palette'], 'teal')
-        # Invalid hints are dropped rather than failing the whole refinement.
-        for node in ({'id': 'topic-1', 'group': '../x'}, {'id': 'topic-1', 'palette': 'neon'}):
-            with self.subTest(node=node):
-                result = self.parse({'type': 'update_node', 'node': node})
-                self.assertNotIn('group', result['node'])
-                self.assertNotIn('palette', result['node'])
+        # An invalid hint is dropped rather than failing the whole refinement.
+        result = self.parse({'type': 'update_node', 'node': {'id': 'topic-1', 'palette': 'neon'}})
+        self.assertNotIn('palette', result['node'])
+
+    def test_engine_aliases_resolve_to_the_kept_card(self):
+        from providers import _parse_refinement
+        graph = dict(self.graph, aliases={'dupe': 'topic-1'})
+        ops = _parse_refinement({'operations': [
+            {'type': 'add_node', 'node': {'id': 'kid', 'label': 'Kid', 'kind': 'idea', 'status': 'named', 'parent_id': 'dupe'}},
+            {'type': 'add_edge', 'edge': {'id': 'e', 'source': 'dupe', 'target': 'kid', 'label': None}},
+        ], 'question': None}, graph)['operations']
+        self.assertEqual(ops[0]['node']['parent_id'], 'topic-1')
+        self.assertEqual(ops[1]['edge']['source'], 'topic-1')
 
     def test_schema_stays_simple_enough_for_gemini(self):
         # Gemini rejects schemas with too many states; classification hints stay loose strings.
         from providers import _NODE_SCHEMA
-        for field in ('near', 'group', 'palette'):
+        for field in ('near', 'palette'):
             self.assertEqual(_NODE_SCHEMA['properties'][field], {'type': ['string', 'null'], 'maxLength': _NODE_SCHEMA['properties'][field]['maxLength']})
         self.assertEqual(_NODE_SCHEMA['properties']['near']['maxLength'], 80)
-        self.assertEqual(len(_NODE_SCHEMA['properties']), 8)
+        self.assertNotIn('group', _NODE_SCHEMA['properties'])
+        self.assertEqual(len(_NODE_SCHEMA['properties']), 7)
 
     def test_near_hint_is_validated_and_dropped_when_invalid(self):
         result = self.parse({'type': 'add_node', 'node': {'id': 'lemonade', 'label': 'Lemonade', 'kind': 'idea',
@@ -166,7 +173,8 @@ class RefinePromptTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, {'operations': [], 'question': None})
         prompt = sent['messages'][0]['content']
         for rule in ('"You:" (the user) or "Cara:"', 'only when she is explaining or mapping a topic',
-                     'map out photosynthesis for me', 'produce NO operations', 'never add a duplicate',
+                     'map out photosynthesis for me', 'produce NO operations', 'never add a duplicate', 'always reuse its existing ID',
+                     'Never add a rephrasing, near-synonym',
                      'Never ask a question about Cara', 'Return no operations for filler'):
             self.assertIn(rule, prompt)
         self.assertEqual(json.loads(sent['messages'][1]['content'])['transcript'], transcript)

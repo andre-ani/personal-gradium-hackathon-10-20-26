@@ -123,33 +123,90 @@ class VoiceSessionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(armed, [17, 56, 86, 146])
 
 
-class FakeDesign:
-    def __init__(self):
-        self.deleted = []
-    async def voice_generate(self, prompt, *, language, **kwargs):
-        return {'embeddings': [{'embedding_id': 'vox_emb_1', 'ready': True}]}
-    async def voice_from_embedding(self, embedding_id, *, name, description=None):
-        assert name.startswith('thread-cara-')
-        return {'uid': 'designed'}
-    async def voice_delete(self, uid):
-        self.deleted.append(uid)
+class VoiceTableTests(unittest.TestCase):
+    def test_table_uses_real_catalog_voices_in_their_own_language(self):
+        catalog = {v.voice_id: (v.name, v.language.code()) for v in gradbot.flagship_voices()}
+        for voice in voice_session.VOICES:
+            self.assertEqual(catalog[voice['voice_id']], (voice['name'], voice['language']))
+        self.assertEqual(voice_session.VOICES[0]['name'], 'Sunnie')
+
+    def test_requests_map_to_distinct_voices_deterministically(self):
+        cases = {'British': 'Tilly', 'a calm British accent': 'Tilly', 'a British man': 'Freddie',
+                 'a sleepy pirate': 'Garrett', 'deep and gruff': 'Garrett', 'Irish': 'Saoirse',
+                 'movie trailer narrator': 'Sterling', 'excited coach': 'Russell', 'a silly teen': 'Zoey'}
+        for wish, name in cases.items():
+            self.assertEqual(voice_session.pick_voice(wish, 'en'), (voice_session.VOICES_BY_ID[
+                next(v['voice_id'] for v in voice_session.VOICES if v['name'] == name)], None), wish)
+        unknown = voice_session.pick_voice('something odd', 'en')
+        self.assertEqual(unknown, voice_session.pick_voice('something odd', 'en'))  # LLM-free and stable.
+        self.assertNotEqual(unknown[0]['name'], 'Sunnie')
+
+    def test_picks_stay_in_the_current_language(self):
+        self.assertEqual(voice_session.pick_voice('a deep pirate', 'fr')[0]['name'], 'Gaspard')
+        voice, elsewhere = voice_session.pick_voice('British', 'fr')
+        self.assertEqual((voice['language'], elsewhere), ('fr', 'en'))  # No British French voice.
+        for language in voice_session.LANGUAGE_NAMES:
+            self.assertEqual(voice_session.pick_voice('x', language)[0]['language'], language)
 
 
-class VoiceStyleTests(unittest.IsolatedAsyncioTestCase):
-    async def test_design_restore_and_close_deletes_designed_voices(self):
-        design = FakeDesign()
-        style = voice_session.VoiceStyle('default', lambda: design)
-        self.assertEqual(style.set_language('DE'), 'German')
+class VoiceStyleTests(unittest.TestCase):
+    def test_restore_language_follow_and_validation(self):
+        style = voice_session.VoiceStyle('YVzbrdWnnu9FgRn5')
+        voice, _ = style.choose_voice('British')
+        style.apply(style.language, voice['voice_id'])
+        self.assertEqual(style.voice['name'], 'Tilly')
+        for wish, back in (('Back to normal!', False), ('anything', True)):
+            self.assertEqual(style.choose_voice(wish, back)[0]['voice_id'], 'YVzbrdWnnu9FgRn5')
         with self.assertRaises(ValueError):
-            style.set_language('it')
-        self.assertEqual(await style.change_voice('a calm British accent'), 'new')
-        self.assertEqual(style.voice_id, 'designed')
-        self.assertEqual(await style.change_voice('Back to normal!'), 'normal')
-        self.assertEqual(await style.change_voice('anything', back_to_normal=True), 'normal')
-        self.assertEqual((style.voice_id, style.description), ('default', None))
+            style.choose_voice('   ')
+        self.assertEqual(style.choose_language('DE'), ('de', 'W4IqRNmU0pbxrKyn'))  # German Femke.
         with self.assertRaises(ValueError):
-            await style.change_voice('   ')
-        await style.close()
-        self.assertEqual(design.deleted, ['designed'])
-        await style.close()  # Idempotent.
-        self.assertEqual(design.deleted, ['designed'])
+            style.choose_language('it')
+        with self.assertRaises(ValueError):
+            style.apply('fr', 'YVzbrdWnnu9FgRn5')  # An English voice never speaks French.
+        self.assertEqual((style.language, style.voice['name']), ('en', 'Tilly'))  # Unchanged on error.
+        style.apply(*style.choose_language('fr'))
+        self.assertEqual(style.choose_voice('normal')[0]['name'], 'Solène')
+
+
+class SwitchTimingTests(unittest.IsolatedAsyncioTestCase):
+    async def test_switch_waits_for_reply_to_finish_and_applies_under_lock(self):
+        outgoing, sent, state = asyncio.Queue(), [], {'voice': 'old'}
+        stop = asyncio.Event()
+        class Socket:
+            async def accept(self): pass
+            async def receive_json(self): return {'type': 'start'}
+            async def receive(self):
+                await stop.wait()
+                return {'type': 'websocket.receive', 'text': '{"type":"stop"}'}
+            async def send_json(self, value): pass
+            async def close(self, **kwargs): pass
+        class Input:
+            async def send_config(self, config): sent.append(config.voice_id)
+            async def close(self): pass
+        async def run(**kwargs):
+            return Input(), SimpleNamespace(receive=outgoing.get)
+        def fresh(_):
+            return gradbot.SessionConfig(voice_id=state['voice'], instructions='Cara', silence_timeout_s=0)
+        def event(kind):
+            return SimpleNamespace(msg_type='event', event=SimpleNamespace(event_type=kind))
+        async def on_tool_call(handle, refresh, socket):
+            await refresh(update=lambda: state.update(voice='new'))
+            stop.set()
+        tool = SimpleNamespace(msg_type='tool_call', tool_call_handle=None, tool_call=None)
+        await outgoing.put(event('llm_started'))
+        await outgoing.put(tool)
+        async def finish_reply():
+            await asyncio.sleep(0.05)
+            self.assertEqual(sent, [])  # Still speaking: nothing sent, voice unchanged.
+            self.assertEqual(state['voice'], 'old')
+            await outgoing.put(event('end_tts_audio'))
+        with patch.object(voice_session.gradbot, 'run', run), \
+                patch.object(voice_session, 'ToolHandle', lambda *a: None), \
+                patch.object(voice_session.schemas, 'from_msg', lambda msg: None):
+            finisher = asyncio.create_task(finish_reply())
+            await asyncio.wait_for(voice_session.handle_session(Socket(),
+                config=SimpleNamespace(client_kwargs={}, audio_format=gradbot.AudioFormat.OggOpus),
+                on_start=fresh, on_config=fresh, on_tool_call=on_tool_call, on_reaction=lambda: None), 3)
+            await finisher
+        self.assertEqual(sent, ['new'])

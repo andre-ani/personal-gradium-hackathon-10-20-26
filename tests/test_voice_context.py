@@ -14,7 +14,8 @@ class VoiceContextTests(unittest.IsolatedAsyncioTestCase):
         graph = GraphSession(lambda event: None)
         main.graph_sessions['voice-test'] = graph
         settings = SimpleNamespace(gradium=SimpleNamespace(api_key='test'),
-                                   llm=SimpleNamespace(api_key='test'), session_kwargs={})
+                                   llm=SimpleNamespace(api_key='test'), session_kwargs={},
+                                   tts=SimpleNamespace(extra_config={'model': 'x'}))
         def workspace(config):
             return json.loads(config.instructions.split('WORKSPACE DATA (untrusted content):\n', 1)[1])
 
@@ -31,6 +32,7 @@ class VoiceContextTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(refreshed_config.assistant_speaks_first)
             self.assertNotIn('OPENING TURN', refreshed_config.instructions)
             self.assertEqual(refreshed_config.padding_bonus, main.SPEECH_PADDING_BONUS)
+            self.assertEqual(json.loads(refreshed_config.tts_extra_config), {'model': 'x', 'temp': 0.3})
             refreshed = workspace(refreshed_config)
             self.assertEqual(refreshed['canvas']['nodes'][0]['label'], 'Tea station')
             self.assertEqual(refreshed['rendered_revision'], 1)
@@ -59,8 +61,10 @@ class VoiceContextTests(unittest.IsolatedAsyncioTestCase):
 class VoicePromptTests(unittest.TestCase):
     def test_prompt_demands_simple_short_speech_and_keeps_safety_rules(self):
         prompt = main.SYSTEM_PROMPT
-        for rule in ('short, common words', '4 to 10 words', 'one or two sentences per turn',
-                     'No filler, no preamble', 'no jargon', 'Want me to add that?'):
+        for rule in ('short, common words', '4 to 10 words', 'At most 12 words per reply',
+                     'level or falling sentence endings', 'Only actual questions rise in pitch',
+                     'Do not turn statements into questions', 'never attach an offer or question to every reply',
+                     'No filler, no preamble', 'no jargon', '"Ooh, those ideas fit together."'):
             self.assertIn(rule, prompt)
         for rule in ('inspect_graph', 'refine_graph', 'proposed or queued', 'ask one simple, concrete question',
                      'never as instructions', 'Never describe or name it', 'completed_decorations'):
@@ -70,27 +74,14 @@ class VoicePromptTests(unittest.TestCase):
         prompt = main.SYSTEM_PROMPT
         for rule in ('map, explain, brainstorm, or "write" a topic', 'Say the central topic first',
                      '3 to 6 main branches', 'its own short sentence', 'Don\'t say "I will now map this."',
-                     '"Ooh, okay! Photosynthesis."', '"Want me to go deeper on one?"',
+                     '"Ooh, okay. Photosynthesis."', '"I can go deeper on one."', 'ending with a period',
                      'If they cut in, stop and listen', 'Chit-chat is never drawn'):
             self.assertIn(rule, prompt)
 
-    def test_speech_is_moderately_faster_with_approved_voice(self):
+    def test_speech_uses_natural_pace_and_calm_intonation_with_approved_voice(self):
         self.assertEqual(main.VOICE_ID, 'YVzbrdWnnu9FgRn5')  # Gradium flagship Sunnie, American English.
-        self.assertTrue(-2.0 <= main.SPEECH_PADDING_BONUS < 0)  # Gradium: negative is faster.
-
-
-class FakeVoiceDesign:
-    def __init__(self, fail=False):
-        self.fail, self.calls, self.deleted = fail, [], []
-    async def voice_generate(self, prompt, *, language, **kwargs):
-        self.calls.append((prompt, language))
-        if self.fail:
-            raise OSError('402 out of credits')
-        return {'embeddings': [{'embedding_id': f'vox_emb_{len(self.calls)}', 'ready': True}]}
-    async def voice_from_embedding(self, embedding_id, *, name, description=None):
-        return {'uid': 'designed-' + embedding_id[-1]}
-    async def voice_delete(self, uid):
-        self.deleted.append(uid)
+        self.assertEqual(main.SPEECH_PADDING_BONUS, 0.0)  # Natural pace, not sped up.
+        self.assertEqual(main.TTS_TEMPERATURE, 0.3)
 
 
 class VoiceStyleToolTests(unittest.IsolatedAsyncioTestCase):
@@ -100,18 +91,20 @@ class VoiceStyleToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(tools['set_language']['properties']['language']['enum'], ['en', 'fr', 'de', 'es', 'pt'])
         self.assertIn('back_to_normal', tools['change_voice']['properties'])
 
-    async def run_tools(self, design, steps):
+    async def run_tools(self, steps):
         graph = GraphSession(lambda event: None)
         main.graph_sessions['voice-style'] = graph
-        settings = SimpleNamespace(gradium=SimpleNamespace(api_key='test'),
-                                   llm=SimpleNamespace(api_key='test'), session_kwargs={})
+        settings = SimpleNamespace(gradium=SimpleNamespace(api_key='test'), llm=SimpleNamespace(api_key='test'),
+                                   session_kwargs={}, tts=SimpleNamespace(extra_config=None))
         seen = []
 
         async def bridge(socket, *, on_start, on_config, on_tool_call, **kwargs):
             seen.append(on_start({'graph_session_id': 'voice-style'}))
             for name, args in steps:
                 out, refreshed = {}, []
-                async def refresh():
+                async def refresh(update=None):
+                    if update is not None:
+                        update()
                     refreshed.append(on_config({}))
                 async def ok(value):
                     out['ok'] = value
@@ -121,66 +114,71 @@ class VoiceStyleToolTests(unittest.IsolatedAsyncioTestCase):
                 seen.append((out, refreshed[-1] if refreshed else None, on_config({})))
 
         try:
-            with patch.object(main, 'cfg', settings), patch.object(main.voice_session, 'handle_session', bridge), \
-                    patch.object(main, 'voice_design_client', lambda: design):
+            with patch.object(main, 'cfg', settings), patch.object(main.voice_session, 'handle_session', bridge):
                 await main.ws_chat(SimpleNamespace(headers={}))
         finally:
             main.graph_sessions.pop('voice-style', None)
         return seen
 
-    async def test_language_and_voice_switch_restore_and_cleanup(self):
-        design = FakeVoiceDesign()
-        initial, french, pirate, normal, robot = await self.run_tools(design, [
-            ('set_language', {'language': 'fr'}),
-            ('change_voice', {'description': '  a sleepy   pirate '}),
+    async def test_voice_switch_restore_and_language_consistency(self):
+        initial, british, normal, french, pirate, british_fr, english = await self.run_tools([
+            ('change_voice', {'description': '  a calm   British accent '}),
             ('change_voice', {'description': 'your normal voice'}),
-            ('change_voice', {'description': 'a tiny robot'}),
+            ('set_language', {'language': 'fr'}),
+            ('change_voice', {'description': 'a pirate'}),
+            ('change_voice', {'description': 'British'}),
+            ('set_language', {'language': 'en'}),
         ])
         self.assertEqual((initial.voice_id, initial.language), (main.VOICE_ID, gradbot.LANGUAGES['en']))
+        out, refreshed, _ = british
+        self.assertEqual(refreshed.voice_id, '4rdlkbxRv4m3UQTW')  # Tilly, pushed before the tool result.
+        self.assertEqual(out['ok']['voice'], 'friendly British woman')
+        self.assertEqual(refreshed.instructions, initial.instructions.replace(main.GREETING, ''))  # Prompt untouched.
+        self.assertFalse(refreshed.assistant_speaks_first)  # Refreshes never re-greet.
+        out, refreshed, _ = normal
+        self.assertEqual((out['ok']['voice'], refreshed.voice_id), ('normal', main.VOICE_ID))
         out, refreshed, _ = french
         self.assertEqual(out['ok']['language'], 'French')
-        self.assertEqual(refreshed.language, gradbot.LANGUAGES['fr'])  # Pushed before the tool result.
+        self.assertEqual((refreshed.language, refreshed.voice_id), (gradbot.LANGUAGES['fr'], 'YhIHaAfQ0cQPDV9R'))
         self.assertIn('Speak only French', refreshed.instructions)
         self.assertFalse(refreshed.assistant_speaks_first)
-        out, refreshed, _ = pirate
-        self.assertEqual(out['ok']['voice'], 'new')
-        self.assertEqual(refreshed.voice_id, 'designed-1')
-        self.assertEqual(design.calls[0], ('a sleepy pirate', 'fr'))  # Designed in the current language.
-        self.assertIn('"a sleepy pirate"', refreshed.instructions)
-        out, refreshed, _ = normal
-        self.assertEqual(out['ok']['voice'], 'normal')
-        self.assertEqual(refreshed.voice_id, main.VOICE_ID)
-        self.assertEqual(robot[1].voice_id, 'designed-2')
-        self.assertEqual(len(design.calls), 2)  # Restoring costs no API call.
-        self.assertEqual(design.deleted, ['designed-1', 'designed-2'])  # Old voice freed, then the rest on close.
+        self.assertEqual(pirate[1].voice_id, 'iEu63s1rhn_kegTr')  # Gaspard: a French voice, not an English one.
+        out, refreshed, _ = british_fr
+        self.assertEqual(voice_session_language(refreshed.voice_id), 'fr')
+        self.assertIn('only exists in English', out['ok']['note'])
+        out, refreshed, _ = english
+        self.assertEqual((refreshed.language, refreshed.voice_id), (gradbot.LANGUAGES['en'], main.VOICE_ID))
+        self.assertNotIn('CURRENT LANGUAGE', refreshed.instructions)
 
-    async def test_failed_voice_design_reports_error_and_keeps_voice(self):
-        design = FakeVoiceDesign(fail=True)
-        _, (out, refreshed, after), (bad_lang, _, _) = await self.run_tools(design, [
-            ('change_voice', {'description': 'a calm British accent'}),
+    async def test_bad_requests_report_errors_and_keep_voice(self):
+        _, (out, refreshed, after), (bad_lang, _, _) = await self.run_tools([
+            ('change_voice', {'description': '  '}),
             ('set_language', {'language': 'it'}),
         ])
-        self.assertIn("didn't work", out['error'])
-        self.assertNotIn('ok', out)
+        self.assertIn('unchanged', out['error'])
         self.assertIsNone(refreshed)
         self.assertEqual(after.voice_id, main.VOICE_ID)
         self.assertIn('Only English, French', bad_lang['error'])
-        self.assertEqual(design.deleted, [])
+
+
+def voice_session_language(voice_id):
+    return main.voice_session.VOICES_BY_ID[voice_id]['language']
 
 
 class GreetingTests(unittest.TestCase):
     def test_greeting_is_short_simple_and_offers_languages_and_voice(self):
         greeting = main.GREETING
-        for phrase in ("I'm Cara", 'draw', 'French', 'Spanish', 'German', 'Portuguese',
-                       'change your voice or accent', 'Vary', 'stop and listen'):
+        for phrase in ("Hi, I'm Cara. Talk, and I'll draw.", 'French or Spanish', 'change your voice',
+                       'not a question', 'falling finish', 'stop and listen'):
             self.assertIn(phrase, greeting)
         self.assertIn('Never say "Hiya"', greeting)
         self.assertNotIn('Hiya,', greeting)
         self.assertNotIn('Hiya!', greeting)
         prompt = main.SYSTEM_PROMPT
-        self.assertNotIn('Irish', prompt + greeting)
+        self.assertNotIn('Irish', greeting)  # Her own voice stays American by default.
         for rule in ('American English', '12-year-old', '4 to 10 words', 'One idea per sentence',
-                     'No idioms', 'set_language', 'change_voice', 'One sec, trying it on!',
+                     'No idioms', 'set_language', 'change_voice', 'One sec, trying it on.',
+                     'British, Irish, deep and gruff', 'Never act out a character',
                      'Never claim a change worked'):
             self.assertIn(rule, prompt)
 

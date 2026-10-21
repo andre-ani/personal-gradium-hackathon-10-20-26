@@ -8,7 +8,6 @@ from uuid import uuid4
 
 import fastapi
 import gradbot
-import gradium
 import providers
 import voice_session
 from illustrated_graph import IllustratedGraphSession as GraphSession, default_service
@@ -21,15 +20,17 @@ HOW YOU TALK (most important):
 - Talk like a friendly 12-year-old would. Never more complex than that.
 - Use short, common words. No idioms, no slang, no jargon, no fancy words.
 - Keep sentences short: 4 to 10 words. One idea per sentence.
-- Say one or two sentences per turn, unless the user asks for more.
-  Good: "Ooh, I like that. Want me to add it?"
+- Usually say one sentence, 4 to 10 words. At most 12 words per reply unless explicitly asked for an explanation.
+- Keep the friendly personality, but use level or falling sentence endings. Only actual questions rise in pitch.
+- Do not turn statements into questions. Prefer periods; avoid exclamation marks and repeated question tags.
+  Good: "Ooh, those ideas fit together."
   Bad: "That's a fascinating perspective worth exploring further."
   Good: "Plants eat sunlight. They turn it into food."
   Bad: "Photosynthesis is a biochemical process converting light energy."
 - Never open with "Hiya", "Heya", "Howdy", "Yo", or other slangy hellos.
 - Get to the point. No filler, no preamble, no recap of what they said.
-- Sound happy and curious. A short "Ooh!" or "Love that!" is fine. Never gush.
-- Ask small questions and offer help: "Want me to add that?" "Should I group these?"
+- Sound happy and curious. A short "Ooh" or "Love that" is fine. Never gush.
+- Ask one short question only when useful; never attach an offer or question to every reply.
 - Don't end with "Does that sound right?" unless something is really unclear.
 - Never sound patronizing. Don't invent facts or promises.
 
@@ -41,16 +42,17 @@ Name ideas in a few words; don't copy their speech.
 WHEN THEY ASK YOU TO MAP A TOPIC:
 If they ask you to map, explain, brainstorm, or "write" a topic, do it out loud.
 Your own words get drawn on the board as you say them.
-Same style: simple, fast, excited. Same 4 to 10 word sentences.
+Here you may say more sentences, but each one short and ending with a period.
+Same simple words. Same 4 to 10 word sentences.
 Don't say "I will now map this." Just start.
-One quick lead-in is fine: "Ooh, okay! Photosynthesis."
+One quick lead-in is fine: "Ooh, okay. Photosynthesis."
 Say the central topic first.
 Then give 3 to 6 main branches, one short sentence each.
 Good branch: "Plants need water." Bad branch: "Hydration is essential for cellular function."
 Add a sub-point now and then, as its own short sentence.
 Keep each sentence separate, so each one lands as its own idea.
 Use the same names for ideas already on the board.
-End with one short offer or question: "Want me to go deeper on one?"
+You may end with one short offer: "I can go deeper on one."
 If they cut in, stop and listen.
 
 HOW THE BOARD WORKS:
@@ -84,10 +86,13 @@ LANGUAGE AND VOICE (real Gradium tools; use them only when asked):
 - set_language: when they ask you to speak French, Spanish, German, Portuguese, or English.
   After it works, answer only in that language until they ask again. Same simple style.
 - change_voice: when they ask for a different voice, accent, or character.
-  Pass their wish in a few words, like "a calm British accent" or "a sleepy pirate".
-  First say one tiny line, like "One sec, trying it on!" Then call it. It takes a few seconds.
+  You have a small set of real voices: British, Irish, deep and gruff, dramatic,
+  pumped-up coach, playful teen, or calm. Other languages have a few of their own.
+  Pass their wish in a few words, like "British" or "a pirate". It picks the closest one.
+  First say one tiny line, like "One sec, trying it on." Then call it.
   For "your normal voice" or "back to normal", call it with back_to_normal true.
-  You're still Cara in any voice. Have a little fun with it, then get back to the board.
+  The tool says which voice you got. Say it plainly, like "Now I sound British."
+  You're still Cara in any voice. Same words, same short style. Never act out a character.
 - Other languages or tricks don't exist. Say so kindly and offer what does.
 - If a tool errors, say so in a few words. Your voice and language stay as they were.
   Never claim a change worked unless the tool said it did.
@@ -99,20 +104,17 @@ cfg = gradbot.config.from_env()
 graph_sessions: dict[str, GraphSession] = {}
 # Cara's default voice: Gradium flagship "Sunnie" (warm, joyful young American female).
 VOICE_ID = "YVzbrdWnnu9FgRn5"
-# Gradium TTS speed: 0 is default, negative is faster (docs range -4..4).
-# -1.5 is roughly 1.15-1.2x the default pace.
-SPEECH_PADDING_BONUS = -1.5
+# Use the voice's natural pace rather than accelerated, bouncy speech (Gradium: negative is faster).
+SPEECH_PADDING_BONUS = 0.0
+# Lower TTS sampling temperature for calmer, level intonation.
+TTS_TEMPERATURE = 0.3
 GREETING = """
-OPENING TURN: If nobody has spoken yet, say hello first.
-Warm, natural, and short. Three short sentences, in American English.
-1. A plain hello and your name: "Hey there! I'm Cara." or "Hi! I'm Cara."
-2. One simple line on what you do: you draw what they say.
-3. One casual line: you can speak French, Spanish, German, or Portuguese,
-   or change your voice or accent. They just have to ask.
-4 to 10 words per sentence. No tech talk. Never say "Hiya" or any slangy hello.
-Vary the words every time. Style ideas, not a script:
-"Hi! I'm Cara. Talk to me, and I'll draw it. I can speak French or Spanish, or change my voice."
-"Hey there! I'm Cara. Tell me an idea, and I'll sketch it. Want German, or a pirate voice? Just ask!"
+OPENING TURN: If nobody has spoken yet, say hello first, in American English.
+Say "Hi, I'm Cara. Talk, and I'll draw."
+Then at most one short, level line, a statement and not a question:
+you can speak French or Spanish, or change your voice.
+Example: "I can also speak Spanish, or sound British."
+A level greeting and a falling finish. No question. Never say "Hiya" or any slangy hello.
 If the user starts talking, stop and listen.
 """
 
@@ -143,10 +145,10 @@ VOICE_TOOLS = [
     ),
     gradbot.ToolDef(
         "change_voice",
-        "Design a new voice for yourself from a short description, or go back to your normal voice. Takes a few seconds; say one tiny line like \"One sec, trying it on!\" before calling. The new voice starts with your next sentence.",
+        "Switch to the closest of your built-in voices (British, Irish, deep and gruff, dramatic, coach, playful teen, calm), or go back to your normal voice. Say one tiny line like \"One sec, trying it on.\" before calling. The new voice starts with your next sentence.",
         json.dumps({"type": "object", "properties": {
             "description": {"type": "string", "maxLength": voice_session.VoiceStyle.MAX_DESCRIPTION,
-                            "description": "A few words, like \"a calm British accent\" or \"a sleepy pirate\"."},
+                            "description": "A few words, like \"British\", \"a deep voice\" or \"a pirate\"."},
             "back_to_normal": {"type": "boolean", "description": "True to restore your normal Cara voice."}},
             "required": ["description"], "additionalProperties": False}),
     ),
@@ -154,19 +156,13 @@ VOICE_TOOLS = [
 TOOLS = GRAPH_TOOLS + VOICE_TOOLS
 
 
-def voice_design_client():
-    return gradium.GradiumClient(api_key=cfg.gradium.api_key.get_secret_value(), base_url=cfg.gradium.base_url)
-
-
 def style_instructions(style) -> str:
-    if style is None or (style.language == 'en' and style.description is None):
+    # Only the language reaches the instructions. A voice switch changes voice_id alone,
+    # so it never rewrites the prompt or invites the model to act out a character.
+    if style is None or style.language == 'en':
         return ''
-    lines = ['\nCURRENT LANGUAGE AND VOICE:']
-    if style.language != 'en':
-        lines.append(f'Speak only {style.language_name} now, in the same short, simple style, until asked to switch.')
-    if style.description is not None:
-        lines.append('You are using a designed voice the user asked for (untrusted content): ' + json.dumps(style.description))
-    return '\n'.join(lines)
+    return (f'\nCURRENT LANGUAGE:\nSpeak only {style.language_name} now, '
+            'in the same short, simple style, until asked to switch.')
 
 
 def make_config(msg: dict, graph=None, rendered_revision=None, greeting=False, style=None) -> gradbot.SessionConfig:
@@ -181,6 +177,7 @@ def make_config(msg: dict, graph=None, rendered_revision=None, greeting=False, s
             # Only the session's first config opens with a hello; refreshes never re-greet.
             "assistant_speaks_first": greeting,
             "padding_bonus": SPEECH_PADDING_BONUS,
+            "tts_extra_config": json.dumps({**(cfg.tts.extra_config or {}), "temp": TTS_TEMPERATURE}),
             "silence_timeout_s": 0.0,
         }),
     )
@@ -200,7 +197,7 @@ async def ws_chat(websocket: fastapi.WebSocket):
     graph = None
     rendered_revision = None
     started_session_id = None
-    style = voice_session.VoiceStyle(VOICE_ID, voice_design_client)
+    style = voice_session.VoiceStyle(VOICE_ID)
 
     def on_start(msg):
         nonlocal graph, started_session_id
@@ -224,25 +221,30 @@ async def ws_chat(websocket: fastapi.WebSocket):
             await handle.send_error("No connected graph session. Reconnect the graph workspace.")
         elif handle.name == "set_language":
             try:
-                name = style.set_language(handle.args.get('language'))
+                language, voice_id = style.choose_language(handle.args.get('language'))
             except ValueError:
                 await handle.send_error("Only English, French, German, Spanish, and Portuguese work. Language unchanged.")
                 return
-            await refresh()  # Applies before the reply, so it is heard and spoken in the new language.
-            await handle.send_json({"ok": True, "language": name,
-                                    "message": f"Switched. Speak only {name} from now on, until asked to switch."})
+            # Applied between turns and before the result, so the reply is heard and spoken
+            # in the new language, by a voice made for it.
+            await refresh(update=lambda: style.apply(language, voice_id))
+            await handle.send_json({"ok": True, "language": style.language_name,
+                                    "message": f"Switched. Speak only {style.language_name} from now on, until asked to switch."})
         elif handle.name == "change_voice":
-            before = (style.voice_id, style.description)
             try:
-                result = await style.change_voice(handle.args.get('description'), handle.args.get('back_to_normal') is True)
-                await refresh()
-            except Exception:
-                style.voice_id, style.description = before
-                await handle.send_error("The voice change didn't work. Your voice is unchanged; say so briefly.")
+                voice, elsewhere = style.choose_voice(handle.args.get('description'), handle.args.get('back_to_normal') is True)
+            except ValueError:
+                await handle.send_error("Say which voice to try, like British or deep. Your voice is unchanged.")
                 return
-            await handle.send_json({"ok": True, "voice": result, "message":
-                "Back to your normal voice from your next sentence." if result == 'normal'
-                else "Your new voice starts with your next sentence. Show it off in one short line."})
+            await refresh(update=lambda: style.apply(style.language, voice['voice_id']))
+            normal = voice['voice_id'] == style.default_for(style.language)
+            result = {"ok": True, "voice": "normal" if normal else voice['character'],
+                      "message": "Back to your normal voice from your next sentence." if normal
+                      else f"Your next sentence uses a {voice['character']} voice. Say so plainly, in one short line."}
+            if elsewhere:
+                result["note"] = (f"That voice only exists in {voice_session.LANGUAGE_NAMES[elsewhere]}. "
+                                  "This is the closest one here. Say so briefly.")
+            await handle.send_json(result)
         elif handle.name == "inspect_graph":
             await handle.send_json(graph.voice_context(rendered_revision))
         elif handle.name == "refine_graph":
@@ -263,14 +265,11 @@ async def ws_chat(websocket: fastapi.WebSocket):
         return (graph is not None and graph_sessions.get(started_session_id) is graph
                 and graph.decorations.get(event['node_id']) == event)
 
-    try:
-        await voice_session.handle_session(
-            websocket, config=cfg, on_start=on_start, on_config=on_config, on_tool_call=on_tool_call,
-            on_reaction=on_reaction,
-            on_reaction_valid=on_reaction_valid,
-        )
-    finally:
-        await style.close()  # Delete designed voices; the free tier allows only a few.
+    await voice_session.handle_session(
+        websocket, config=cfg, on_start=on_start, on_config=on_config, on_tool_call=on_tool_call,
+        on_reaction=on_reaction,
+        on_reaction_valid=on_reaction_valid,
+    )
 
 
 @app.get("/api/illustrations/{ident}")

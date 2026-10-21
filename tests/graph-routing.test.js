@@ -84,8 +84,8 @@ test('a parent spreads its arrows along one side, in target order, into stacked 
     .map(([id, source, target]) => ({ id, source, target }));
   const graph = { getNodeData: () => nodes, getEdgeData: () => edges };
   const outgoing = ['pa', 'pb', 'pc', 'skip'].map(id => route(graph, id));
-  // All leave the right side (past the drawn sidecar) at distinct, well-spaced points.
-  for (const r of outgoing) assert.equal(r.path[0][1], 125 + 168);
+  // All leave the paper's right edge (images may sit on any side, so no art gutter) at distinct, well-spaced points.
+  for (const r of outgoing) assert.equal(r.path[0][1], 125);
   const [ya, yb, yc] = outgoing.slice(0, 3).map(r => r.path[0][2]);
   assert.ok(ya < yb && yb < yc, 'attachments follow the order of their targets');
   const ys = outgoing.map(r => r.path[0][2]).sort((a, b) => a - b);

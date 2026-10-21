@@ -17,9 +17,10 @@ function card(node) {
   const style = node.style || {};
   const size = Array.isArray(style.size) ? style.size : [220, 120];
   const scale = 1 + .075 * Math.max(0, Math.min(1, style.liftProgress || 0));
-  const gutter = Math.max(0, Number(style.illustrationSpace) || 0);
+  // Illustrations sit on any side of a card now (and under it), so arrows
+  // attach to the paper itself rather than past a reserved art gutter.
   return { id: node.id, cx: Number(style.x) || 0, cy: Number(style.y) || 0,
-    width: Number(size[0]) * scale, height: Number(size[1]) * scale, art: gutter && hasArt(node) ? gutter : 0 };
+    width: Number(size[0]) * scale, height: Number(size[1]) * scale, art: 0 };
 }
 function sideToward(box, vector) {
   const horizontal = Math.abs(vector[0]) / (box.width / 2 + 1) >= Math.abs(vector[1]) / (box.height / 2 + 1);
