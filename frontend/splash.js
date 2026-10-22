@@ -18,14 +18,15 @@ const CARA = atlas.states;
 // one second-level idea. Illustrated cards use saved outputs of the app's own
 // raster generator (static/splash/), drawn by the live illustration layer.
 const art = (name, label) => ({ image_url: `/static/splash/${name}.jpg?v=gouache`, concept: label });
+// Hand-placed like a real sketch: no two cards share an edge or a row.
 const DEMO_NODES = [
-  { id: 'party', label: 'Garden party', kind: 'topic', icon: 'calendar', palette: 'blue', x: 0, y: 0 },
-  { id: 'food', label: 'Food', parent_id: 'party', icon: 'utensils', palette: 'terracotta', x: -300, y: -72 },
+  { id: 'party', label: 'Garden party', kind: 'topic', icon: 'calendar', palette: 'blue', x: 6, y: -4 },
+  { id: 'food', label: 'Food', parent_id: 'party', icon: 'utensils', palette: 'terracotta', x: -318, y: -96 },
   // A drink isn't food: Lemonade floats loose near the party, with no arrow.
-  { id: 'lemonade', label: 'Lemonade', loose: true, topicRole: 'supporting', icon: 'mug', palette: 'rose', x: -150, y: -205, illustration: art('lemonade', 'Lemonade') },
-  { id: 'friends', label: 'Friends', parent_id: 'party', icon: 'group', palette: 'green', x: -300, y: 78 },
-  { id: 'music', label: 'Music', parent_id: 'party', icon: 'play', palette: 'plum', x: 300, y: -72, illustration: art('music', 'Music') },
-  { id: 'lights', label: 'Fairy lights', parent_id: 'party', palette: 'ochre', x: 300, y: 78, illustration: art('fairy-lights', 'Fairy lights') },
+  { id: 'lemonade', label: 'Lemonade', loose: true, topicRole: 'supporting', icon: 'mug', palette: 'rose', x: -128, y: -226, illustration: art('lemonade', 'Lemonade') },
+  { id: 'friends', label: 'Friends', parent_id: 'party', icon: 'group', palette: 'green', x: -268, y: 104 },
+  { id: 'music', label: 'Music', parent_id: 'party', icon: 'play', palette: 'plum', x: 288, y: -58, illustration: art('music', 'Music') },
+  { id: 'lights', label: 'Fairy lights', parent_id: 'party', palette: 'ochre', x: 336, y: 112, illustration: art('fairy-lights', 'Fairy lights') },
 ];
 const DEMO_EDGES = DEMO_NODES.filter(node => node.parent_id).map(node => ({ id: `e-${node.id}`, source: node.parent_id, target: node.id }));
 // Each spoken phrase reveals the part of the map it describes.
@@ -104,14 +105,14 @@ export function mountSplash(root, { isReduced = () => false, onVoice, onReveal, 
   const loops = [];
   const loop = animation => { loops.push(animation); return animation; };
 
-  const top = html('div', 'splash-top', root);
+  const main = html('div', 'splash-main', root);
+  // "Powered by", the logo and the tagline travel together as one heading group.
+  const heading = html('div', 'splash-heading', main);
+  const top = html('div', 'splash-top', heading);
   html('span', 'splash-caps', top, 'Powered by');
   const mark = html('span', 'gradium-mark', top);
   mark.setAttribute('role', 'img');
   mark.setAttribute('aria-label', 'Gradium');
-
-  const main = html('div', 'splash-main', root);
-  const heading = html('div', 'splash-heading', main);
   const brand = html('h1', 'splash-brand', heading);
   const logo = html('img', 'splash-logo', brand);
   logo.src = '/static/brand/thread-logo-256.png?v=ink2';
@@ -121,7 +122,9 @@ export function mountSplash(root, { isReduced = () => false, onVoice, onReveal, 
 
   const graphBox = html('div', 'splash-graph', main);
   graphBox.setAttribute('aria-hidden', 'true');
-  const dock = html('div', 'splash-dock', main);
+  // Cara and the button share the bottom band; the map owns the centre.
+  const foot = html('div', 'splash-foot', main);
+  const dock = html('div', 'splash-dock', foot);
   dock.setAttribute('aria-hidden', 'true');
   const caraBox = html('div', 'splash-cara', dock);
   caraBox.innerHTML = `<svg viewBox="${frameBox(CARA.reveal[0])}" width="100%" height="100%"><image href="${atlas.image}" width="${atlas.width}" height="${atlas.height}"/></svg>`;
@@ -134,7 +137,7 @@ export function mountSplash(root, { isReduced = () => false, onVoice, onReveal, 
   const tagName = caraTag.querySelector('span');
   const tagArrow = [...caraTag.querySelectorAll('path')];
 
-  const ctaRow = html('div', 'splash-cta-row', main);
+  const ctaRow = html('div', 'splash-cta-row', foot);
   const button = html('button', 'splash-cta', ctaRow);
   button.type = 'button';
   const ring = html('i', 'splash-cta-ring', button);
@@ -234,10 +237,13 @@ export function mountSplash(root, { isReduced = () => false, onVoice, onReveal, 
       const [, h] = node.parent_id || node.loose ? BRANCH_SIZE : TOPIC_SIZE;
       return [node.y - h / 2, node.y + h / 2];
     });
-    const [left, right, top, bottom] = [Math.min(...edgesX), Math.max(...edgesX), Math.min(...edgesY) - 30, Math.max(...edgesY) + 30];
+    // Frame symmetrically around the central topic so it sits in the middle.
+    const centre = DEMO_NODES.find(node => node.id === 'party');
+    const halfX = Math.max(...edgesX.map(x => Math.abs(x - centre.x)));
+    const halfY = Math.max(...edgesY.map(y => Math.abs(y - centre.y))) + 30;
     const { width, height } = graphBox.getBoundingClientRect();
-    await graph.zoomTo(Math.min(.9, width / (right - left), height / (bottom - top)), false);
-    const [x, y] = graph.getViewportByCanvas([(left + right) / 2, (top + bottom) / 2]);
+    await graph.zoomTo(Math.min(.9, width / (2 * halfX), height / (2 * halfY)), false);
+    const [x, y] = graph.getViewportByCanvas([centre.x, centre.y]);
     await graph.translateBy([width / 2 - x, height / 2 - y], false);
   }
   async function demoLoop() {

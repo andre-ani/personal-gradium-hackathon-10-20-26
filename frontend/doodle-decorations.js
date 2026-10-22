@@ -187,22 +187,26 @@ function burstStrokes(center, direction, rand) {
   });
 }
 
-function headingBox(node, attributes, box) {
-  const measured = node?.shapeMap?.heading?.getLocalBounds?.();
-  const min = measured?.min;
-  const max = measured?.max;
-  const text = String(dataValue(attributes, 'headingText', '') || '').trim();
-  const fontSize = Number(dataValue(attributes, 'headingFontSize', 24)) || 24;
-  if (min && max && [min[0], min[1], max[0], max[1]].every(Number.isFinite) && max[0] > min[0]) {
-    return { text, fontSize, minX: min[0], minY: min[1], maxX: max[0], maxY: max[1] };
-  }
-  if (!text) return null;
-  // First frame fallback: G may measure text only after the first render.
-  const padding = Number(dataValue(attributes, 'textPadding', 20)) || 20;
-  const minX = box.x + padding;
-  const minY = box.y + padding;
-  const width = Math.min(box.width - padding * 2, text.length * fontSize * 0.42);
-  return { text, fontSize, minX, minY, maxX: minX + width, maxY: minY + fontSize * 1.05 };
+function headingBox(node) {
+  // Card headings are rendered as animated words, not a single heading shape.
+  return node?._cardWords?.headingGeometry?.() || null;
+}
+
+// The ring is a superellipse |x/rx|^n + |y/ry|^n = 1 with n = 2 / RING_POWER.
+const RING_POWER = .8;
+const RING_N = 2 / RING_POWER;
+
+/**
+ * Radii for a ring that clears every corner of the heading's ink box: a
+ * fixed side margin, then the height that keeps the corners inside.
+ */
+export function headingRing(heading, { padY = 4 } = {}) {
+  const cx = (heading.minX + heading.maxX) / 2, cy = (heading.minY + heading.maxY) / 2;
+  const halfW = Math.max(1, (heading.maxX - heading.minX) / 2), halfH = Math.max(1, (heading.maxY - heading.minY) / 2);
+  // Wider headings get a wider margin so the ring never grows tall and round.
+  const rx = halfW + Math.max(11, halfW * .08);
+  const ry = (halfH + padY) / (1 - (halfW / rx) ** RING_N) ** (1 / RING_N);
+  return { cx, cy, rx, ry };
 }
 
 function cornerAnchor(box, variant, rand) {
@@ -226,48 +230,27 @@ export function doodleStrokes(type, box, seed, { heading = null, variant = 'note
   const rand = random(hashSeed(`${seed}:${type}`));
   if (!box.width || !box.height) return [];
   if (type === 'underline' || type === 'circle') {
-    if (!heading) return doodleStrokes('stars', box, seed, { variant });
-    const fontSize = heading.fontSize;
+    if (!heading) return [];
+    const lines = heading.lines || [heading];
     if (type === 'underline') {
-      const left = heading.minX - 3 + spread(rand, 2);
-      const right = Math.min(heading.maxX, box.x + box.width - 14) + 4 + spread(rand, 3);
-      const y = heading.maxY + 3 + rand() * 2;
-      const sag = 1.5 + rand() * 2.5;
-      const rise = -1 - rand() * 3;
-      const main = stroke(wobblyCurve((t) => [
-        left + (right - left) * t,
-        y + Math.sin(Math.PI * t) * sag + rise * t * t,
-      ], 30, rand, 0.35));
-      if (rand() < 0.45) {
-        // A shorter second pass under the first, as a quick double swoosh.
-        const start = left + (right - left) * (0.12 + rand() * 0.1);
-        const end = left + (right - left) * (0.72 + rand() * 0.2);
-        const second = stroke(wobblyCurve((t) => [
-          start + (end - start) * t,
-          y + 4.5 + Math.sin(Math.PI * t) * sag * 0.6 + rise * 0.5 * t,
-        ], 22, rand, 0.3));
-        return [main, second];
-      }
-      // Otherwise the swoosh finishes with a small upward flick.
-      const tail = stroke(wobblyPolyline([
-        [right, y + rise],
-        [right + 5 + rand() * 3, y + rise - 5 - rand() * 3],
-      ], rand, { bow: 0.8 }));
-      return [main, tail];
+      // One stroke per rendered line, just under its baseline (descenders may cross).
+      return lines.map(line => {
+        const left = line.minX - 2, right = line.maxX + 3;
+        const y = (line.baseline ?? line.maxY) + Math.max(2.5, (line.fontSize || 24) * .14);
+        const sag = 1 + rand() * 1.5;
+        return stroke(wobblyCurve(t => [left + (right - left) * t, y + Math.sin(Math.PI * t) * sag + spread(rand, .15)], 28, rand, .3));
+      });
     }
-    const word = heading.text.split(/\s+/)[0] || heading.text;
-    const width = Math.max(fontSize, Math.min(heading.maxX - heading.minX, word.length * fontSize * 0.36));
-    const cx = heading.minX + width / 2;
-    const cy = heading.minY + fontSize * 0.56;
-    const rx = width / 2 + 8 + rand() * 3;
-    const ry = fontSize * 0.6 + 3 + rand() * 2;
-    const tilt = spread(rand, 0.08);
-    const start = -Math.PI * (0.6 + rand() * 0.3);
-    return [stroke(wobblyCurve((t) => {
-      const angle = start + t * Math.PI * 2 * 1.14;
-      const grow = 1 + 0.07 * t;
-      return rotate([cx + Math.cos(angle) * rx * grow, cy + Math.sin(angle) * ry * grow], tilt, [cx, cy]);
-    }, 56, rand, 0.7))];
+    // A loose ring around the whole heading, including wrapped lines.
+    const { cx, cy, rx, ry } = headingRing(heading);
+    const start = -Math.PI * .78, tilt = spread(rand, .018);
+    return [stroke(wobblyCurve(t => {
+      const angle = start + t * Math.PI * 2 * 1.06;
+      const cosine = Math.cos(angle), sine = Math.sin(angle);
+      const x = Math.sign(cosine) * Math.abs(cosine) ** RING_POWER;
+      const y = Math.sign(sine) * Math.abs(sine) ** RING_POWER;
+      return rotate([cx + x * rx, cy + y * ry], tilt, [cx, cy]);
+    }, 64, rand, .4))];
   }
 
   const { point, direction } = cornerAnchor(box, variant, rand);

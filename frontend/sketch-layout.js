@@ -1,12 +1,15 @@
 import { animate } from 'motion';
-import { planRadialLayout } from './radial-layout.js';
+import { planNativeLayout } from './native-layout.js';
+import { hasSectionItems, needsArrangement, planRadialLayout } from './radial-layout.js';
+import { beginEdgeRouteFreeze, endEdgeRouteFreeze } from './graph-edge-routes.js';
+import * as edgeRoutes from './graph-edge-routes.js';
 
 const LIFT_MS = 160;
 const MOVE_MS = 600;
 const SETTLE_MS = 200;
 const DEFAULT_SIZE = [220, 120];
-const DEFAULT_PRIMARY_GAP = 92;
-const DEFAULT_SECONDARY_GAP = 58;
+const DEFAULT_PRIMARY_GAP = 56;
+const DEFAULT_SECONDARY_GAP = 36;
 
 function numberOr(value, fallback) {
   const number = Number(value);
@@ -176,8 +179,8 @@ function planTopicLayout(records, rank, outgoing, incoming, mode) {
   const primarySize = (record) => (mode.axis === 'horizontal' ? record.width : record.height);
   const secondarySize = (record) => (mode.axis === 'horizontal' ? record.height : record.width);
   const primaryGap = mode.compact ? 48 : DEFAULT_PRIMARY_GAP;
-  const secondaryGap = mode.compact ? 30 : DEFAULT_SECONDARY_GAP + 28;
-  const bandGap = mode.compact ? 36 : DEFAULT_SECONDARY_GAP + 28;
+  const secondaryGap = mode.compact ? 30 : DEFAULT_SECONDARY_GAP + 6;
+  const bandGap = mode.compact ? 36 : DEFAULT_SECONDARY_GAP + 6;
   const laneGroups = new Map();
   for (const record of records) {
     const branch = branchByIndex.get(record.index) ?? 0;
@@ -313,7 +316,13 @@ function planTopicLayout(records, rank, outgoing, incoming, mode) {
  * Ranks are built with a bounded Kahn pass; choosing the first remaining node
  * breaks a cycle without recursion or an unbounded retry loop.
  */
+
 export function planSketchLayout(nodes = [], edges = [], orientation = 'horizontal') {
+  // Provisional placement only; settled process geometry comes from Dagre.
+  // Flow maps with sections and items use the block columns; plain processes stay horizontal.
+  if (String(orientation).toLowerCase() === 'flow') {
+    return hasSectionItems(radialRecords(nodes, edges)) ? planRadialSketch(nodes, edges, 'flow') : planSketchLayout(nodes, edges, 'horizontal');
+  }
   if (String(orientation).toLowerCase() === 'radial') return planRadialSketch(nodes, edges);
   const mode = orientationMode(orientation);
   const records = [];
@@ -482,9 +491,9 @@ export function planSketchLayout(nodes = [], edges = [], orientation = 'horizont
   return records.map((record) => targets.get(record.id));
 }
 
-// Radial mind map: parents come from parent_id, else the first primary (then
-// any) incoming edge. The main topic keeps its current spot on the canvas.
-function planRadialSketch(nodes, edges) {
+// Cards for the block planner: parents come from parent_id, else the first
+// primary (then any) incoming edge.
+function radialRecords(nodes, edges) {
   const list = [];
   const seen = new Set();
   for (const node of Array.isArray(nodes) ? nodes : []) {
@@ -499,6 +508,7 @@ function planRadialSketch(nodes, edges) {
       parent_id: node?.parent_id ?? data.parent_id,
       near: node?.near ?? data.near,
       group: node?.group ?? data.group,
+      series: node?.series ?? data.series,
       kind: node?.kind ?? data.kind,
       width: positiveOr(style.width ?? node?.width ?? data.width, width),
       height: positiveOr(style.height ?? node?.height ?? data.height, height),
@@ -507,7 +517,7 @@ function planRadialSketch(nodes, edges) {
       y: numberOr(style.y ?? node?.y ?? data.y, 0),
     });
   }
-  if (!list.length) return [];
+  if (!list.length) return list;
   const incoming = new Map();
   for (const edge of Array.isArray(edges) ? edges : []) {
     const source = edgeEnd(edge, 'source');
@@ -522,10 +532,26 @@ function planRadialSketch(nodes, edges) {
       record.parent_id = incoming.get(record.id)?.source;
     }
   }
+  return list;
+}
+
+/**
+ * True when the live canvas (graph-shaped nodes with data and style) has
+ * drifted from its block arrangement: overlapping cards, an item away from
+ * its slot beside its section, or an ordered section out of its column.
+ */
+export function radialNeedsArrangement(nodes = [], edges = []) {
+  return needsArrangement(radialRecords(nodes, edges).map((record) => ({ ...record, space: 0 })));
+}
+
+// Radial mind map; the main topic keeps its current spot on the canvas.
+function planRadialSketch(nodes, edges, orientation = 'radial') {
+  const list = radialRecords(nodes, edges);
+  if (!list.length) return [];
   const main = list.find((record) => record.kind === 'root')
     || list.find((record) => record.parent_id === undefined)
     || list[0];
-  const planned = planRadialLayout(list, { anchor: { x: main.x, y: main.y } });
+  const planned = planRadialLayout(list, { anchor: { x: main.x, y: main.y }, orientation });
   return planned.map(({ id, x, y }) => ({ id, style: { x, y } }));
 }
 
@@ -694,8 +720,10 @@ export function createSketchReorder(
     job.cancelled = true;
     for (const stop of [...job.controls]) stop();
     job.cancelPromise = (async () => {
-      await settleCurrent({ valid: () => false });
       try { await job.done; } catch { /* cancellation is intentionally quiet */ }
+      // The motion job releases frozen routes in finally; settle after that
+      // draw so cancelled cards also get accurate routes at their last spot.
+      await settleCurrent({ valid: () => false });
       if (active === job) active = undefined;
     })();
     return job.cancelPromise;
@@ -703,16 +731,22 @@ export function createSketchReorder(
 
   const run = async (job, orientation) => {
     const snapshot = snapshotGraph(graph);
-    const targets = planSketchLayout(snapshot.nodes, snapshot.edges, orientation);
+    const driver = animationDriver(animateDriver);
+    const reduced = typeof reducedMotion === 'function' ? Boolean(reducedMotion()) : Boolean(reducedMotion);
+    const valid = () => active === job && !job.cancelled && !disposed;
+    job.valid = valid;
+    const supportsPlannedRoutes = typeof graph?.updateEdgeData === 'function';
+    if (supportsPlannedRoutes) edgeRoutes.clearPlannedRoutes?.(graph);
+    const planned = String(orientation).toLowerCase() === 'radial'
+      ? { nodes: planSketchLayout(snapshot.nodes, snapshot.edges, orientation), edges: [] }
+      : await planNativeLayout(snapshot.nodes, snapshot.edges, orientation, { isCurrent: valid });
+    if (!valid()) return [];
+    const targets = planned.nodes;
     const targetById = new Map(targets.map((target) => [target.id, target.style]));
     const starts = new Map(snapshot.nodes.map((node) => {
       const [x, y] = nodePosition(graph, node);
       return [node.id, { x, y }];
     }));
-    const driver = animationDriver(animateDriver);
-    const reduced = typeof reducedMotion === 'function' ? Boolean(reducedMotion()) : Boolean(reducedMotion);
-    const valid = () => active === job && !job.cancelled && !disposed;
-    job.valid = valid;
 
     if (!targets.length) {
       if (valid() && onFinish) await onFinish([] , orientation);
@@ -720,6 +754,8 @@ export function createSketchReorder(
     }
 
     if (reduced) {
+      // Install routes first so the single draw writeStyles requests uses them.
+      if (supportsPlannedRoutes) edgeRoutes.installPlannedRoutes?.(graph, planned.edges);
       writeStyles(job, targets.map((target) => [target.id, { ...target.style, liftProgress: 0 }]));
       await draws.flush();
       if (!valid()) return [];
@@ -743,6 +779,9 @@ export function createSketchReorder(
       }));
     };
 
+    // Card motion does not need obstacle rerouting every frame. Keep the
+    // settled routes during motion, then invalidate once for the final draw.
+    beginEdgeRouteFreeze(graph);
     setLift(0);
     await draws.flush();
     if (!valid()) return [];
@@ -756,6 +795,9 @@ export function createSketchReorder(
     if (!valid()) return [];
     if (!await animateValue(driver, 1, 0, SETTLE_MS, setLift, job) || !valid()) return [];
     setLift(0);
+    endEdgeRouteFreeze(graph);
+    if (supportsPlannedRoutes) edgeRoutes.installPlannedRoutes?.(graph, planned.edges);
+    draws.request();
     await draws.flush();
     if (!valid()) return [];
     const ids = currentIds(graph);
@@ -782,6 +824,7 @@ export function createSketchReorder(
         if (job.cancelled || disposed) return [];
         throw error;
       }).finally(() => {
+        endEdgeRouteFreeze(graph);
         if (active === job) active = undefined;
       });
       return job.done;

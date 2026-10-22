@@ -26,7 +26,7 @@ The separate hosted development service is now configured:
 - Mutable development service: `thread-post-hackathon`
 - Deployment source: `andre-ani/personal-gradium-hackathon-10-20-26`, branch `post-hackathon`; pushes deploy automatically.
 - One Python instance, using the committed Dockerfile and wsproto. Provider credentials were copied privately from the submitted service; none are stored in Git.
-- The preview is labeled in its page title and a persistent badge.
+- The development branch and separate Railway URL identify post-hackathon work; the app itself has no preview badge.
 
 For other hosted improvements, use this development service or another distinct preview URL. A Vercel preview is not a verified voice runtime: the submitted code uses two WebSockets with shared in-memory state and was also packaged for a single Railway process. Preserve the framework and deployment requirements when preparing a future preview.
 

@@ -3,7 +3,7 @@
 // vignette. Client-only. (A stop-motion video is stashed in share-video.js.)
 const WIDTH = 1080;
 const HEIGHT = 1350;
-const PAPER = '#f1f1f1';
+const PAPER = '#f3f1ec';
 const INK = '#123f85';
 const MUTED = '#485d79';
 const INK_ALPHA = .86;

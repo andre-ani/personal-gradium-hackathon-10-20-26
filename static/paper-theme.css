@@ -2,8 +2,10 @@
 
 /* Paper is a quiet surface for the live shader and the idea map. */
 :root {
-  --paper-base: #f1f1f1;
-  --paper-light: #f7f7f7;
+  --paper-base: #f3f1ec;
+  --paper-light: #f8f6f1;
+  /* Secondary colour paired with the blue ink. */
+  --green-ink: #2c6140;
   --ink-deep: #132b4e;
   --ink: var(--ink-deep);
   --blue-ink: #123f85;
@@ -81,9 +83,13 @@ header {
 
 .layout {
   grid-template-columns: minmax(0, 1fr);
+  /* One row exactly the layout's height: the workspace (and the controls
+     anchored to its bottom) never grows past the window. */
+  grid-template-rows: minmax(0, 1fr);
   height: calc(100dvh - 64px);
   min-height: 0;
 }
+.layout > .workspace { min-height: 0; height: 100%; }
 
 .layout.conversation-open {
   grid-template-columns: minmax(0, 1fr) minmax(280px, 300px);
@@ -162,7 +168,14 @@ a:focus-visible,
 .workspace {
   background-image: none;
   background-size: auto;
+  /* Never slice the map at the workspace edge: the canvas runs up under the
+     header, and the camera's top padding keeps cards below the header. */
+  overflow: visible;
 }
+
+/* G6 writes position: relative inline; keep the canvas pinned to the workspace
+   so it shrinks with it (drawer open) instead of being sliced by its clip. */
+body > .layout > .workspace > #graph { position: absolute !important; inset: -64px 0 0 0; height: auto; }
 
 .graph-label,
 .graph-help {
@@ -504,7 +517,7 @@ a:focus-visible,
   rotate: -3deg; transform-origin: 50% 100%;
 }
 .dock .mic:hover:not(:disabled) { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 58 50'%3E%3Cpath d='M10 5.5 C20 3 40 3.4 49 5 C55 6.6 56.2 12 55.6 21 C55 30.5 52.6 36 46 37.4 L34.5 38.4 L29.4 47.2 L25.2 38.4 L11 37.6 C5 36.8 2.8 31 3.2 21.2 C3.6 11.4 4.6 6.4 10 5.5 Z' fill='%23f3f3f3' stroke='%23123f85' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M14 8.5 C24 7 36 7 46 8.6' fill='none' stroke='%23123f85' stroke-opacity='.25' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat; box-shadow: none; filter: drop-shadow(0 3px 5px rgb(19 43 78 / .14)); }
-.dock .mic.recording, .dock .mic.recording:hover:not(:disabled) { color: #a3402a; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 58 50'%3E%3Cpath d='M10 5.5 C20 3 40 3.4 49 5 C55 6.6 56.2 12 55.6 21 C55 30.5 52.6 36 46 37.4 L34.5 38.4 L29.4 47.2 L25.2 38.4 L11 37.6 C5 36.8 2.8 31 3.2 21.2 C3.6 11.4 4.6 6.4 10 5.5 Z' fill='%23f6ede9' stroke='%23a3402a' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M14 8.5 C24 7 36 7 46 8.6' fill='none' stroke='%23a3402a' stroke-opacity='.25' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat; animation: mic-bubble-breathe 2.4s ease-in-out infinite; }
+.dock .mic.recording, .dock .mic.recording:hover:not(:disabled) { color: var(--green-ink); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 58 50'%3E%3Cpath d='M10 5.5 C20 3 40 3.4 49 5 C55 6.6 56.2 12 55.6 21 C55 30.5 52.6 36 46 37.4 L34.5 38.4 L29.4 47.2 L25.2 38.4 L11 37.6 C5 36.8 2.8 31 3.2 21.2 C3.6 11.4 4.6 6.4 10 5.5 Z' fill='%23e9f1e6' stroke='%232c6140' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cpath d='M14 8.5 C24 7 36 7 46 8.6' fill='none' stroke='%232c6140' stroke-opacity='.25' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat; animation: mic-bubble-breathe 2.4s ease-in-out infinite; }
 .dock .mic:disabled { opacity: .55; }
 .dock .mic > svg { width: 20px; height: 20px; }
 @keyframes mic-bubble-breathe { 50% { rotate: 2deg; scale: 1.05; } }
@@ -590,3 +603,28 @@ body::before {
   font: 19px/1 'Patrick Hand', cursive; color: var(--blue-ink); opacity: 0;
   white-space: nowrap; pointer-events: none;
 }
+
+/* Content may pass under the header and the bottom-centre controls; it fades
+   out there instead of being clipped. The canvas starts 64px above the
+   workspace (under the header); the illustration layer spans the viewport. */
+body > .layout > .workspace > #graph {
+  -webkit-mask-image:
+    linear-gradient(to bottom, transparent 0, transparent 34px, #000 130px),
+    radial-gradient(ellipse 300px 150px at 50% 100%, transparent 45%, #000 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to bottom, transparent 0, transparent 34px, #000 130px),
+    radial-gradient(ellipse 300px 150px at 50% 100%, transparent 45%, #000 100%);
+  mask-composite: intersect;
+}
+body > .pencil-illustrations {
+  -webkit-mask-image:
+    linear-gradient(to bottom, transparent 0, transparent 34px, #000 130px),
+    radial-gradient(ellipse 300px 150px at 50% calc(100% - var(--illustration-bottom, 0px)), transparent 45%, #000 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to bottom, transparent 0, transparent 34px, #000 130px),
+    radial-gradient(ellipse 300px 150px at 50% calc(100% - var(--illustration-bottom, 0px)), transparent 45%, #000 100%);
+  mask-composite: intersect;
+}
+html.thread-debug-open body > .pencil-illustrations { --illustration-bottom: var(--thread-debug-height, 0px); }

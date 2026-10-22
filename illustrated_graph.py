@@ -13,9 +13,9 @@ def default_service():
 
 
 class IllustratedGraphSession(GraphSession):
-    def __init__(self, send, *, illustration_service=None, **kwargs):
+    def __init__(self, send, *, illustration_service=None, illustration_settle=4.0, **kwargs):
         super().__init__(send, **kwargs)
-        self.illustrations = GraphIllustrations(self._illustrated, illustration_service or default_service())
+        self.illustrations = GraphIllustrations(self._illustrated, illustration_service or default_service(), illustration_settle)
 
     def _illustrated(self, ident, result):
         node = self._desired.get(ident)

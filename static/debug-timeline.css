@@ -1,0 +1,356 @@
+/* Development drawer along the bottom edge. It claims a band of the viewport
+   instead of floating over the canvas: the band's height is published as
+   --thread-debug-height and subtracted from .layout below, so the workspace
+   is genuinely shorter while the drawer is open. */
+
+:root {
+  --thread-debug-height: 0px;
+  --thread-debug-header: 64px;
+  --dbg-paper: #f6f6f4;
+  --dbg-rule: rgba(18, 63, 133, 0.16);
+  --dbg-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --dbg-plain: #3c567c;
+  --dbg-speech: #123f85;
+  --dbg-think: #2f6a8c;
+  --dbg-patch: #2c6b4f;
+  --dbg-mic: #8a5a1f;
+  --dbg-layout: #574a8c;
+  --dbg-tool: #7a3f6b;
+  --dbg-trouble: #a13b3b;
+}
+
+/* The trace is a real split pane. Its changing height takes space from the
+   canvas in the same flex layout, so it cannot cover the workspace. */
+html.thread-debug-open body {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+html.thread-debug-open body > header { flex: 0 0 auto; }
+
+html.thread-debug-open body > .layout {
+  flex: 1 1 0;
+  height: auto;
+  min-height: 0;
+  /* Bound the bottom and sides, but let the map canvas run up under the
+     header (paper-theme.css) so cards are never sliced at the layout's top. */
+  overflow: visible;
+  clip-path: inset(-64px 0 0 0);
+}
+
+/* Grid children otherwise keep their automatic min-content height while the
+   drawer takes a flex band, leaving the G6 canvas shorter than its workspace. */
+html.thread-debug-open body > .layout > .workspace {
+  min-height: 0;
+  height: 100%;
+}
+
+html.thread-debug-open body > .layout > .workspace > #graph { min-height: 0; }
+
+html.thread-debug-open body > .dbg {
+  position: relative;
+  flex: 0 0 var(--thread-debug-height);
+  width: 100%;
+}
+
+.dbg {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 42;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  font-family: 'Patrick Hand', cursive;
+  color: var(--ink-deep, #132b4e);
+  background: var(--dbg-paper);
+  border-top: 1px solid var(--dbg-rule);
+  box-shadow: 0 -10px 26px rgba(19, 43, 78, 0.1);
+}
+
+.dbg[hidden] { display: none; }
+.dbg.dbg-resizing { user-select: none; }
+
+/* A hand-drawn hairline you can grab. */
+.dbg-grip {
+  flex: 0 0 auto;
+  height: 9px;
+  margin-top: -5px;
+  cursor: ns-resize;
+  background: repeating-linear-gradient(90deg, var(--dbg-rule) 0 7px, transparent 7px 13px) center / 100% 1px no-repeat;
+  touch-action: none;
+}
+
+.dbg-grip:hover,
+.dbg-grip:focus-visible {
+  background: repeating-linear-gradient(90deg, var(--blue-ink, #123f85) 0 7px, transparent 7px 13px) center / 100% 2px no-repeat;
+}
+
+.dbg-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 4px;
+  min-height: 28px;
+}
+
+.dbg-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: var(--blue-ink, #123f85);
+}
+
+.dbg-count {
+  font-family: var(--dbg-mono);
+  font-size: 10.5px;
+  color: var(--muted-ink, #485d79);
+  white-space: nowrap;
+}
+
+.dbg-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  max-height: 20px;
+}
+
+.dbg-chip {
+  border: 0;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-family: var(--dbg-mono);
+  font-size: 10px;
+  line-height: 18px;
+  color: var(--dbg-plain);
+  background: rgba(18, 63, 133, 0.09);
+}
+
+.dbg-chip[aria-pressed='false'] {
+  color: rgba(72, 93, 121, 0.6);
+  background: transparent;
+  text-decoration: line-through;
+}
+
+.dbg-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.dbg-btn,
+.dbg-send {
+  border: 0;
+  border-radius: 5px;
+  padding: 3px 9px;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 15px;
+  color: var(--blue-ink, #123f85);
+  background: transparent;
+}
+
+.dbg-btn:hover,
+.dbg-send:hover { background: rgba(28, 70, 144, 0.1); }
+.dbg-btn[aria-pressed='true'] { color: var(--dbg-mic); background: rgba(138, 90, 31, 0.12); }
+
+.dbg-body {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-top: 1px solid rgba(18, 63, 133, 0.1);
+}
+
+.dbg-log {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  margin: 0;
+  padding: 4px 0 8px;
+  list-style: none;
+}
+
+.dbg-log:empty::before {
+  content: 'Nothing yet. Speak, or type a thought on the right.';
+  display: block;
+  padding: 10px 12px;
+  font-size: 15px;
+  color: rgba(72, 93, 121, 0.75);
+}
+
+.dbg-row {
+  display: grid;
+  grid-template-columns: 4.4em 5.8em minmax(0, 1fr) max-content;
+  gap: 0 8px;
+  align-items: baseline;
+  padding: 1px 12px 1px 10px;
+  border-left: 2px solid transparent;
+}
+
+.dbg-row[hidden] { display: none; }
+.dbg-row:nth-child(even) { background: rgba(18, 63, 133, 0.025); }
+.dbg-row:hover { background: rgba(18, 63, 133, 0.06); }
+
+.dbg-t,
+.dbg-stage,
+.dbg-meta,
+.dbg-detail {
+  font-family: var(--dbg-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dbg-t {
+  color: rgba(72, 93, 121, 0.78);
+  text-align: right;
+}
+
+.dbg-stage {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dbg-tone, var(--dbg-plain));
+}
+
+.dbg-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.dbg-label {
+  font-family: 'Patrick Hand', cursive;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--dbg-tone, var(--dbg-plain));
+}
+
+.dbg-detail {
+  margin-left: 7px;
+  color: var(--muted-ink, #485d79);
+}
+
+.dbg-meta {
+  color: rgba(72, 93, 121, 0.72);
+  white-space: nowrap;
+}
+
+/* Stage families keep their own ink so a burst reads as shape first. */
+.dbg-row[data-tone='speech'] { --dbg-tone: var(--dbg-speech); }
+.dbg-row[data-tone='think'] { --dbg-tone: var(--dbg-think); }
+.dbg-row[data-tone='patch'] { --dbg-tone: var(--dbg-patch); }
+.dbg-row[data-tone='mic'] { --dbg-tone: var(--dbg-mic); }
+.dbg-row[data-tone='layout'] { --dbg-tone: var(--dbg-layout); }
+.dbg-row[data-tone='tool'] { --dbg-tone: var(--dbg-tool); }
+.dbg-row[data-tone='trouble'] { --dbg-tone: var(--dbg-trouble); }
+.dbg-row[data-tone='trouble'] { border-left-color: rgba(161, 59, 59, 0.5); }
+.dbg-row[data-tone='speech'] { border-left-color: rgba(18, 63, 133, 0.32); }
+
+.dbg-form {
+  flex: 0 0 auto;
+  width: min(300px, 38%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px 10px;
+  border-left: 1px solid rgba(18, 63, 133, 0.1);
+}
+
+.dbg-label-text {
+  font-size: 15px;
+  color: var(--muted-ink, #485d79);
+}
+
+.dbg-form textarea {
+  flex: 1 1 auto;
+  min-height: 48px;
+  width: 100%;
+  resize: none;
+  border: 0;
+  border-radius: 5px;
+  padding: 7px 9px;
+  font-family: var(--dbg-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-deep, #132b4e);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(18, 63, 133, 0.14);
+}
+
+.dbg-form textarea::placeholder { color: rgba(88, 112, 143, 0.7); }
+
+.dbg-form-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dbg-hint {
+  font-family: var(--dbg-mono);
+  font-size: 9.5px;
+  color: rgba(72, 93, 121, 0.72);
+}
+
+.dbg-send { background: rgba(28, 70, 144, 0.12); }
+
+.dbg-say {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Folded away: a small tab on the free bottom-right corner. */
+.dbg-tab {
+  position: fixed;
+  right: 16px;
+  bottom: 0;
+  z-index: 42;
+  border: 1px solid var(--dbg-rule);
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  padding: 2px 12px 4px;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 15px;
+  color: var(--blue-ink, #123f85);
+  background: var(--dbg-paper);
+  box-shadow: 0 -4px 12px rgba(19, 43, 78, 0.08);
+}
+
+.dbg-tab[hidden] { display: none; }
+.dbg-tab:hover { background: #fff; }
+
+@media (max-width: 760px) {
+  .dbg-body { flex-direction: column-reverse; }
+  .dbg-form {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    border-left: 0;
+    border-top: 1px solid rgba(18, 63, 133, 0.1);
+    padding: 6px 12px;
+  }
+  .dbg-label-text,
+  .dbg-hint { display: none; }
+  .dbg-form textarea { min-height: 34px; height: 34px; }
+  .dbg-chips { display: none; }
+  .dbg-row { grid-template-columns: 4.2em minmax(0, 1fr) max-content; }
+  .dbg-stage { display: none; }
+}

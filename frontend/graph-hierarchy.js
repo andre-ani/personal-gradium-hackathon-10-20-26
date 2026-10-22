@@ -22,12 +22,12 @@ export function paperEdgeStyle(role) {
   return {
     edgeRole: primary ? 'primary' : 'supporting',
     stroke: primary ? '#123f85' : '#37597f',
-    lineWidth: primary ? 4 : 2.7,
+    lineWidth: primary ? 2.3 : 1.8,
     // Slightly translucent ink so the paper grain shows through.
     strokeOpacity: primary ? 0.85 : 0.78,
     lineDash: [],
     endArrow: true,
-    // Above the cards, so each arrowhead reads on top of the card it lands in.
+    // Connectors end at the card boundary, with a small native arrowhead.
     zIndex: 1,
   };
 }

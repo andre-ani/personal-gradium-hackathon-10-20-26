@@ -1,3 +1,4 @@
+import { renderedEdgePoints } from './graph-edge-routes.js';
 import { animate } from 'motion';
 import { mountRasterDrawing } from './raster-reveal.js';
 
@@ -87,7 +88,13 @@ const crossesArrow = (rect, points) => points.some(([x, y]) => x > rect.left && 
 export function planIllustrationPlacements(cards, ids, { edges = [], previous = new Map() } = {}) {
   const byId = new Map(cards.map(card => [card.id, card]));
   const arrows = edges.filter(e => byId.has(e.source) && byId.has(e.target) && e.source !== e.target)
-    .map(e => arrowSamples(byId.get(e.source), byId.get(e.target)));
+    .map(e => {
+      if (!e.routePoints?.length) return arrowSamples(byId.get(e.source), byId.get(e.target));
+      return e.routePoints.slice(1).flatMap((end, index) => {
+        const start = e.routePoints[index], steps = Math.max(1, Math.ceil(Math.hypot(end[0] - start[0], end[1] - start[1]) / 12));
+        return Array.from({ length: steps + 1 }, (_, step) => [start[0] + (end[0] - start[0]) * step / steps, start[1] + (end[1] - start[1]) * step / steps]);
+      });
+    });
   const order = [...new Set(ids)].filter(id => byId.has(id))
     .sort((a, b) => (previous.has(b) - previous.has(a)) || String(a).localeCompare(String(b)));
   const placed = [];
@@ -118,8 +125,51 @@ export function planIllustrationPlacements(cards, ids, { edges = [], previous = 
   return result;
 }
 
+/**
+ * The URL a card may load as its background wash, or null. Relative API
+ * paths resolve against the page origin; anything cross-origin is refused,
+ * since a tainted image would also taint the map canvas (and its exports).
+ * Only raster/SVG data URLs (our own sanitized drawings) pass as data.
+ */
+export function resolveIllustrationUrl(url, origin = globalThis.location?.origin) {
+  const text = String(url ?? '').trim();
+  if (!text) return null;
+  if (/^data:image\/(png|jpeg|webp|gif|svg\+xml)[;,]/i.test(text)) return text;
+  if (!origin || origin === 'null') return null;
+  try {
+    const resolved = new URL(text, origin);
+    return /^https?:$/.test(resolved.protocol) && resolved.origin === new URL(origin).origin ? resolved.href : null;
+  } catch { return null; }
+}
+
+/**
+ * Centre of the inked subject as image fractions, from RGBA pixels of a
+ * (downsampled) image; generated pictures keep white margins. Null if blank.
+ */
+export function inkFocus(data, width, height, threshold = 60) {
+  let minX = width, minY = height, maxX = -1, maxY = -1;
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const i = (y * width + x) * 4;
+    if (data[i + 3] < 32 || 765 - data[i] - data[i + 1] - data[i + 2] < threshold) continue;
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  }
+  return maxX < 0 ? null : [(minX + maxX + 1) / 2 / width, (minY + maxY + 1) / 2 / height];
+}
+
+/**
+ * Cover-fit an image into a card, shifting the crop so the subject sits as
+ * near the card centre as the image allows. Returns drawImage's dx/dy/dw/dh.
+ */
+export function coverCrop(imageWidth, imageHeight, width, height, focus = [.5, .5]) {
+  const scale = Math.max(width / imageWidth, height / imageHeight);
+  const dw = imageWidth * scale, dh = imageHeight * scale;
+  const place = (size, drawn, at) => Math.min(0, Math.max(size - drawn, size / 2 - at * drawn));
+  return { dx: place(width, dw, focus[0]), dy: place(height, dh, focus[1]), dw, dh };
+}
+
 /** Only call with server-sanitized shape SVGs, never raw model output. */
-export function mountPencilDrawing(container, drawing, { reducedMotion = false, onActivity = () => {} } = {}) {
+export function illustrationSvgElement(drawing) {
   const doc = new DOMParser().parseFromString(drawing.svg, 'image/svg+xml');
   const svg = document.importNode(doc.documentElement, true);
   // Defense in depth for cached/foreign graph snapshots.
@@ -129,6 +179,11 @@ export function mountPencilDrawing(container, drawing, { reducedMotion = false, 
       || [...svg.querySelectorAll('*'), svg].some(el => !tags.has(el.localName) || [...el.attributes].some(a => !attributes.has(a.name) || /url\s*\(|javascript:|https?:/i.test(a.value) && a.name !== 'xmlns'))) {
     throw new Error('Unsafe illustration rejected.');
   }
+  return svg;
+}
+
+export function mountPencilDrawing(container, drawing, { reducedMotion = false, onActivity = () => {} } = {}) {
+  const svg = illustrationSvgElement(drawing);
   svg.setAttribute('width', '160'); svg.setAttribute('height', '160');
   svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', `Pencil drawing of ${drawing.concept}`);
   svg.style.cssText = 'display:block;overflow:visible;mix-blend-mode:multiply;';
@@ -199,7 +254,7 @@ export function createIllustrationLayer(graph, container, { isReduced = () => fa
     let cards, edges;
     try {
       cards = (graph.getNodeData() || []).flatMap(node => { try { return [cardBox(node.id)]; } catch { return []; } });
-      edges = graph.getEdgeData?.() || [];
+      edges = (graph.getEdgeData?.() || []).map(edge => ({ ...edge, routePoints: renderedEdgePoints(graph, edge.id) }));
     } catch { return; }
     placements = planIllustrationPlacements(cards, [...entries.keys()], { edges, previous: placements });
   }

@@ -6,7 +6,7 @@ import {
 
 const MAX_PIXEL_COUNT = 1_500_000;
 
-const FALLBACK_BACKGROUND_COLOR = '#f1f1f1';
+const FALLBACK_BACKGROUND_COLOR = '#f3f1ec';
 const FALLBACK_BACKGROUND_IMAGE = [
   'radial-gradient(circle at 18% 12%, rgb(255 255 255 / 0.54), transparent 46%)',
   'repeating-linear-gradient(103deg, rgb(90 90 90 / 0.02) 0 1px, transparent 1px 5px)',
@@ -18,8 +18,9 @@ const PAPER_UNIFORMS = {
   u_imageAspectRatio: 1,
   u_isImage: false,
   // Fully neutral greys: the paper should read as texture, never as a tint.
-  u_colorBack: [0.925, 0.925, 0.925, 1],
-  u_colorPaper: [0.955, 0.955, 0.955, 1],
+  // A very slight warm cream: paper, not grey, and never yellow.
+  u_colorBack: [0.93, 0.922, 0.905, 1],
+  u_colorPaper: [0.96, 0.952, 0.935, 1],
   u_colorShadow: [0.3, 0.3, 0.3, 0.1],
   u_blending: 0,
   u_distortion: 0,

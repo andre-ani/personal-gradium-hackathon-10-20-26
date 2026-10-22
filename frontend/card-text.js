@@ -239,13 +239,44 @@ globalThis.document?.fonts?.addEventListener?.('loadingdone', () => {
 });
 
 /**
+ * Group laid-out heading words into rendered lines. Words are card-local
+ * (top-left origin, `textBaseline: 'top'`) and `origin` is the card's
+ * top-left in node space, so the result shares the node's tilt and lift
+ * transform with anything drawn beside it. `metrics` (G's measured
+ * `fontProperties`) refines the vertical ink extent when available.
+ */
+export function headingLineGeometry(words, origin = [0, 0]) {
+  const lines = new Map();
+  for (const word of words) {
+    if (word.role && word.role !== 'heading') continue;
+    const size = Number(word.font?.size) || 24;
+    const ascent = Number(word.metrics?.ascent) > 0 ? Number(word.metrics.ascent) : size * .8;
+    const descent = Number(word.metrics?.descent) > 0 ? Number(word.metrics.descent) : size * .24;
+    const left = origin[0] + word.x, top = origin[1] + word.y;
+    const line = lines.get(word.y) || { text: '', fontSize: size, minX: Infinity, maxX: -Infinity, minY: top, baseline: top + ascent, maxY: top + ascent + descent };
+    line.text = `${line.text} ${word.text}`.trim();
+    line.minX = Math.min(line.minX, left);
+    line.maxX = Math.max(line.maxX, left + word.width);
+    line.fontSize = Math.max(line.fontSize, size);
+    line.baseline = Math.max(line.baseline, top + ascent);
+    line.maxY = Math.max(line.maxY, top + ascent + descent);
+    lines.set(word.y, line);
+  }
+  const visible = [...lines.values()].sort((a, b) => a.minY - b.minY);
+  if (!visible.length) return null;
+  return { text: visible.map(line => line.text).join(' '), fontSize: Math.max(...visible.map(line => line.fontSize)), lines: visible,
+    minX: Math.min(...visible.map(line => line.minX)), minY: visible[0].minY,
+    maxX: Math.max(...visible.map(line => line.maxX)), maxY: Math.max(...visible.map(line => line.maxY)) };
+}
+
+/**
  * Animated per-word text for one card. `createText(style)` returns a shape with
  * `attr(style)`; `removeText(shape)` detaches it. Positions are card-local and
  * placed against `origin`, so a growing card carries its words with its edge.
  */
 export class CardWords {
-  constructor({ createText, removeText, reducedMotion = () => false, onFontsChanged }) {
-    Object.assign(this, { createText, removeText, reducedMotion, onFontsChanged });
+  constructor({ createText, removeText, reducedMotion = () => false, onFontsChanged, onGeometryChange }) {
+    Object.assign(this, { createText, removeText, reducedMotion, onFontsChanged, onGeometryChange });
     this.active = new Map();
     this.leaving = [];
     this.origin = [0, 0];
@@ -294,6 +325,15 @@ export class CardWords {
     for (const entry of this.leaving) entry.shape.attr(this.position(entry));
   }
 
+  /** Heading line geometry in node-local coordinates (see headingLineGeometry). */
+  headingGeometry() {
+    const headings = [...this.active.values()].filter(entry => entry.word.role === 'heading');
+    // Entering words are still rising; wait for the settled layout.
+    if (!headings.length || headings.some(entry => (entry.alpha ?? 1) < .95)) return null;
+    return headingLineGeometry(headings.map(entry => ({ ...entry.word,
+      metrics: entry.shape?.parsedStyle?.metrics?.fontProperties })), this.origin);
+  }
+
   animating() {
     return this.leaving.length > 0 || [...this.active.values()].some((entry) => entry.phase === 'enter');
   }
@@ -338,6 +378,7 @@ export class CardWords {
       entry.shape.attr({ ...this.position(entry), opacity: this.base * entry.alpha });
       return true;
     });
+    this.onGeometryChange?.();
     return this.animating();
   }
 
@@ -379,7 +420,7 @@ function balancedWrap(text, lines, { measure, font }) {
  * balanced lines before it gets wide), height fits icon + heading with room,
  * and the result stays between square and about 4:3.
  */
-function sparseSize({ heading, hasIcon, headingFont: font, padding, minSize, sparseMaxWidth, measure }) {
+function sparseSize({ heading, hasIcon, headingFont: font, padding, minSize, sparseMaxWidth, sparseAspect = SPARSE_MAX_ASPECT, measure }) {
   const lineHeight = Math.round(font.size * 1.12);
   const icon = hasIcon ? Math.round(Math.min(40, font.size * 1.15)) : 0;
   const gap = icon ? Math.round(font.size * 0.16) : 0;
@@ -392,7 +433,7 @@ function sparseSize({ heading, hasIcon, headingFont: font, padding, minSize, spa
   const content = icon + gap + Math.min(3, lines.length) * lineHeight;
   const needHeight = Math.ceil(Math.max(content + padding * 1.8, icon / 0.3));
   let width = Math.max(minSize[0], needWidth);
-  const height = Math.max(minSize[1], needHeight, Math.ceil(width / SPARSE_MAX_ASPECT));
+  const height = Math.max(minSize[1], needHeight, Math.ceil(width / sparseAspect));
   width = Math.max(width, height);
   return { width, height, needWidth, needHeight };
 }
@@ -426,17 +467,18 @@ function richSize({ heading, body, hasIcon, headingFont, bodyFont, padding, minS
 
 /**
  * Content-driven card size. `minSize`, `maxSize` and `sparseMaxWidth` come
- * from the card variant; `wobble` is the seeded [w, h] factor (about ±5%),
- * applied without ever squeezing the text below what it needs.
+ * from the card variant; `sparseAspect` is the widest a sparse card may be
+ * (width / height, default about 4:3); `wobble` is the seeded [w, h] factor
+ * (about ±5%), applied without ever squeezing the text below what it needs.
  */
 export function estimateCardSize({
   heading = '', body = '', hasIcon = false, headingFont, bodyFont, padding = 20,
-  minSize = [140, 110], maxSize = [400, 280], sparseMaxWidth = 260, wobble = [1, 1], measure,
+  minSize = [140, 110], maxSize = [400, 280], sparseMaxWidth = 260, sparseAspect = SPARSE_MAX_ASPECT, wobble = [1, 1], measure,
 }) {
   const cacheable = !measure;
-  const key = cacheable && JSON.stringify([heading, body, hasIcon, headingFont, bodyFont, padding, minSize, maxSize, sparseMaxWidth, wobble]);
+  const key = cacheable && JSON.stringify([heading, body, hasIcon, headingFont, bodyFont, padding, minSize, maxSize, sparseMaxWidth, sparseAspect, wobble]);
   if (cacheable && sizeMemo.has(key)) return [...sizeMemo.get(key)];
-  const options = { heading, body, hasIcon, headingFont, bodyFont, padding, minSize, maxSize, sparseMaxWidth, measure: measure ?? measureText };
+  const options = { heading, body, hasIcon, headingFont, bodyFont, padding, minSize, maxSize, sparseMaxWidth, sparseAspect, measure: measure ?? measureText };
   const fit = chooseCardLayout({ heading, body }) === 'sparse' ? sparseSize(options) : richSize(options);
   const size = [
     Math.max(fit.needWidth, Math.round(fit.width * wobble[0])),

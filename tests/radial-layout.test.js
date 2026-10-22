@@ -1,18 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { footprint, isLooseCard, overlaps, placeRadialNode, planRadialLayout, withContainsEdges } from '../frontend/radial-layout.js';
+import { footprint, isLooseCard, overlaps, placeRadialNode, planRadialLayout, ringReach, withContainsEdges } from '../frontend/radial-layout.js';
 
 const root = (id = 'root', extra = {}) => ({ id, kind: 'root', width: 340, height: 190, ...extra });
 const card = (id, parent_id, extra = {}) => ({ id, parent_id, width: 300, height: 150, ...extra });
 
-// Footprint check including illustration room on the side away from the topic.
-function assertNoOverlap(nodes, positions, centreOf = () => positions.get(nodes[0].id)) {
-  const boxes = nodes.map((node) => {
-    const p = positions.get(node.id);
-    const centre = centreOf(node);
-    const outward = p === centre ? 0 : Math.atan2(p.y - centre.y, p.x - centre.x);
-    return { id: node.id, box: footprint({ ...node, ...p }, outward) };
-  });
+// Card boxes never overlap. Section blocks stack items tightly and leave
+// illustration room to the illustration layer, so this checks the cards.
+function assertNoOverlap(nodes, positions) {
+  const boxes = nodes.map((node) => ({ id: node.id, box: footprint({ ...node, ...positions.get(node.id), space: 0 }, 0) }));
   for (let a = 0; a < boxes.length; a += 1) {
     for (let b = a + 1; b < boxes.length; b += 1) {
       assert.equal(overlaps(boxes[a].box, boxes[b].box), false, `${boxes[a].id} overlaps ${boxes[b].id}`);
@@ -129,7 +125,8 @@ test('separate topics become non-overlapping satellite centres', () => {
   const topicOf = (node) => planned.get(node.id === node.parent_id ? node.id : (node.parent_id ?? node.id));
   assertNoOverlap(nodes, planned, topicOf);
   assert.deepEqual(planned.get('a'), { x: 0, y: 0 });
-  assert.ok(Math.hypot(planned.get('b').x, planned.get('b').y) > 600);
+  // Compact blocks pack satellites closer, but never onto the first topic.
+  assert.ok(Math.hypot(planned.get('b').x, planned.get('b').y) > 450);
 
   const placed = [];
   for (const node of nodes) placed.push({ ...node, ...placeRadialNode(node, placed) });
@@ -193,4 +190,13 @@ test('loose ideas stay by the main topic; separate topics stay satellites', () =
   placed.push({ id: 'stray', kind: 'idea', width: 300, height: 150, ...stray });
   const planned = asMap(planRadialLayout([...placed, { id: 'other', kind: 'topic', width: 300, height: 150 }]));
   assertNoOverlap([...placed, { id: 'other', width: 300, height: 150 }], planned);
+});
+
+test('ring reach varies per branch but stays bounded', () => {
+  const reaches = Array.from({ length: 40 }, (_, i) => ringReach(`b${i}`, `c${i}`));
+  assert.ok(reaches.every((r) => r >= 12 && r <= 84), 'bounded');
+  assert.ok(new Set(reaches.map(Math.round)).size > 10, 'varied');
+  // Cards of one branch share most of the variation.
+  const sibling = [0, 1, 2].map((i) => ringReach('branch', `k${i}`));
+  assert.ok(Math.max(...sibling) - Math.min(...sibling) <= 20);
 });

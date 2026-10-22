@@ -19,14 +19,10 @@ body:not(.thread-entered) > header,
 body:not(.thread-entered) > .layout { visibility: hidden; }
 
 .splash-top {
-  position: absolute;
-  top: 24px;
-  left: 50%;
-  translate: -50% 0;
-  z-index: 3;
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-bottom: clamp(10px, 2.2vh, 22px);
 }
 
 .splash-caps {
@@ -49,13 +45,20 @@ body:not(.thread-entered) > .layout { visibility: hidden; }
   position: relative;
   z-index: 2;
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(8px, 2.4vh, 26px);
-  padding: 60px 16px 40px;
+  /* Three bands: heading above, the demo map exactly in the middle, Cara and
+     the button below. Equal outer bands keep the map centred on screen. */
+  display: grid;
+  grid-template-rows: 1fr auto 1fr;
+  justify-items: center;
+  /* The same empty space above the heading group and below Start talking. */
+  padding: var(--splash-edge) 16px;
+  --splash-edge: clamp(28px, 6vh, 64px);
 }
+.splash-heading { align-self: start; }
+.splash-foot { align-self: end; display: grid; justify-items: center; gap: clamp(8px, 2vh, 20px); }
+/* The status note floats under the button so it never adds bottom space. */
+.splash-cta-row { position: relative; }
+.splash-cta-row .splash-note { position: absolute; top: calc(100% + 6px); left: 50%; translate: -50% 0; width: max-content; }
 
 .splash-heading { display: grid; justify-items: center; gap: 2px; text-align: center; }
 

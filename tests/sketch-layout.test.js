@@ -146,6 +146,8 @@ test('keeps main topic branches in separate lanes with supporting nodes nearby',
   assert.ok(position.get('observe').x > position.get('activity').x);
   assert.ok(position.get('move').x > position.get('observe').x);
   assert.ok(new Set(result.map((patch) => patch.style.x)).size <= 4);
+  const yValues = result.map((patch) => patch.style.y);
+  assert.ok(Math.max(...yValues) - Math.min(...yValues) < 800, 'topic bands stay compact');
 });
 
 test('wraps a deep main-role graph into bounded primary bands', () => {

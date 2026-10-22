@@ -235,7 +235,7 @@ def arm_idle(config, streak):
 
 
 async def handle_session(websocket, *, config, on_start, on_config, on_tool_call, on_reaction, on_reaction_valid=None,
-                         rng=random.random):
+                         on_transcript=None, rng=random.random):
     await websocket.accept()
     input_handle = None
     tasks, tool_tasks = [], set()
@@ -321,6 +321,8 @@ async def handle_session(websocket, *, config, on_start, on_config, on_tool_call
                 task.add_done_callback(tool_tasks.discard)
                 continue
             value = schemas.from_msg(msg)
+            if on_transcript is not None and value is not None and msg.msg_type in ('stt_text', 'tts_text') and getattr(value, 'text', '').strip():
+                await on_transcript(value.text, 'user' if msg.msg_type == 'stt_text' else 'assistant')
             if value is not None:
                 async with send_lock:
                     await websocket.send_json(value.model_dump())

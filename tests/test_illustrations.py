@@ -53,7 +53,7 @@ class JobTests(unittest.IsolatedAsyncioTestCase):
             return {'svg': sanitize_svg(SVG), 'concept': concept}
         events = []
         service = IllustrationService(generate)
-        session = IllustratedGraphSession(events.append, illustration_service=service, heartbeat=.005, semantic_delay=.005,
+        session = IllustratedGraphSession(events.append, illustration_service=service, illustration_settle=0, heartbeat=.005, semantic_delay=.005,
             classify=lambda *_: None, refine=lambda *_: None)
         # Disable semantic requests so this test only checks graph/drawing order.
         session._semantic = lambda: asyncio.sleep(3600)
@@ -83,7 +83,7 @@ class JobTests(unittest.IsolatedAsyncioTestCase):
             await releases[concept].wait()
             return {'svg': sanitize_svg(SVG), 'concept': concept}
         events = []
-        session = IllustratedGraphSession(events.append, illustration_service=IllustrationService(generate), heartbeat=.005)
+        session = IllustratedGraphSession(events.append, illustration_service=IllustrationService(generate), illustration_settle=0, heartbeat=.005)
         session._semantic = lambda: asyncio.sleep(3600)
         await session.start()
         try:
@@ -117,7 +117,7 @@ class JobTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(calls, [('apples', 'blue'), ('apples', 'teal')])
         self.assertTrue(all(key[1] == STYLE_VERSION for key in service.cache))
         delivered = []
-        jobs = GraphIllustrations(lambda ident, result: delivered.append((ident, result['palette'])), service)
+        jobs = GraphIllustrations(lambda ident, result: delivered.append((ident, result['palette'])), service, settle=0)
         try:
             jobs.offer({'id': 'a', 'label': 'kitchen', 'status': 'named'})
             jobs.offer({'id': 'b', 'label': 'garden', 'status': 'named', 'palette': 'plum'})
@@ -129,6 +129,23 @@ class JobTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await jobs.close()
 
+
+    async def test_drawing_waits_for_the_map_to_go_quiet(self):
+        calls = []
+        async def generate(concept, palette='blue'):
+            calls.append(concept)
+            return {'concept': concept, 'palette': palette}
+        jobs = GraphIllustrations(lambda *_: None, IllustrationService(generate), settle=.05)
+        try:
+            jobs.offer({'id': 'a', 'label': 'kitchen', 'status': 'named'})
+            await asyncio.sleep(.03)
+            jobs.offer({'id': 'a', 'label': 'big kitchen', 'status': 'named'})
+            await asyncio.sleep(.03)
+            self.assertEqual(calls, [], 'nothing is drawn while labels keep changing')
+            await asyncio.sleep(.06)
+            self.assertEqual(calls, ['big kitchen'], 'only the label that stayed is drawn')
+        finally:
+            await jobs.close()
 
 class RasterTests(unittest.TestCase):
     def test_prompt_is_a_simple_doodle_with_shared_palette_and_no_circle(self):

@@ -8,10 +8,9 @@ import { drawDoodleDecoration } from './doodle-decorations.js';
  * sketch stable while the camera or a node moves.
  */
 import { Circle as GCircle, Path, Text as GText } from '@antv/g';
-import { BaseEdge, BaseNode, ExtensionCategory, register } from '@antv/g6';
+import { Polyline, BaseNode, ExtensionCategory, register } from '@antv/g6';
 import { RoughGenerator } from 'roughjs/bin/generator.js';
-import { inkArrowPath, sketchEdgeScale } from './edge-geometry.js';
-import { graphEdgeRoute } from './graph-edge-routes.js';
+import { EDGE_CORNER_RADIUS, edgeRoutesFrozen, organicRoute } from './graph-edge-routes.js';
 import { paperTexturePattern } from './note-paper.js';
 import {
   CARD_GROW, CardWords, chooseCardLayout, easeGrow, iconFrame, layoutCard, measureText, startTicking, stopTicking,
@@ -129,7 +128,27 @@ function wavyEdge(a, b, seed, index) {
   return `Q${at(t / 2, bow + waveA)} ${at(t, bow)} Q${at((1 + t) / 2, bow + waveB)} ${b[0].toFixed(2)} ${b[1].toFixed(2)}`;
 }
 
-function irregularPaperPath(x, y, width, height, radius, seed, paperCurl = 0) {
+/**
+ * Size of a curled corner. Resting curls (at most 0.6) keep their historic
+ * size; a card being placed curls further, up to a clearly lifted corner.
+ */
+const TEXT_HOLD_GRACE = 300;
+
+function curlSizeFor(width, height, curl) {
+  const extra = Math.max(0, curl - 0.6) / 0.4;
+  return Math.min(24 + 18 * extra, Math.max(10, Math.min(width, height) * (0.08 + curl * 0.08 + 0.1 * extra)));
+}
+
+/** Cards keep flat corners; a curled corner read as a rendering glitch. */
+function shownCurl() { return 0; }
+
+/** Lift above the paper: 1 is held up, 0 resting, slightly below 0 pressed flat. */
+const liftValue = (attributes, style) => clamp(dataValue(attributes, 'liftProgress', style.liftProgress ?? 0), -0.2, 1);
+
+/** Size of a decision card's cut top-right corner. */
+const cutSize = (width, height) => Math.min(22, Math.max(10, Math.min(width, height) * 0.16));
+
+function irregularPaperPath(x, y, width, height, radius, seed, paperCurl = 0, cut = false) {
   const r = Math.max(2, Math.min(radius || 10, Math.min(width, height) / 2));
   // Corners differ per card; one of them is cut noticeably rounder.
   const soft = seed % 4;
@@ -137,9 +156,7 @@ function irregularPaperPath(x, y, width, height, radius, seed, paperCurl = 0) {
     + (index === soft ? 6 + Math.abs(jitter(seed, 44, 4)) : 0));
   const [topLeft, topRight, bottomRight, bottomLeft] = [0, 1, 2, 3].map(corner);
   const curl = clamp(paperCurl);
-  const curlSize = curl
-    ? Math.min(24, Math.max(10, Math.min(width, height) * (0.08 + curl * 0.08)))
-    : 0;
+  const curlSize = curl ? curlSizeFor(width, height, curl) : 0;
   const point = (px, py, index, amount = 1.4) => [px + jitter(seed, index, amount), py + jitter(seed, index + 50, amount)];
   const tl = point(x, y, 1);
   const tr = point(x + width, y, 2);
@@ -150,8 +167,9 @@ function irregularPaperPath(x, y, width, height, radius, seed, paperCurl = 0) {
   const bl = point(x, y + height, 4);
   const pt = (p) => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`;
   const topStart = [tl[0] + topLeft, tl[1]];
-  const topEnd = [tr[0] - topRight, tr[1]];
-  const rightStart = [tr[0], tr[1] + topRight];
+  const chamfer = cut ? cutSize(width, height) : 0;
+  const topEnd = [tr[0] - (chamfer || topRight), tr[1]];
+  const rightStart = [tr[0], tr[1] + (chamfer || topRight)];
   const rightEnd = [br[0], br[1] - (curlSize || bottomRight)];
   const bottomStart = [br[0] - (curlSize || bottomRight), br[1]];
   const bottomEnd = [bl[0] + bottomLeft, bl[1]];
@@ -163,7 +181,7 @@ function irregularPaperPath(x, y, width, height, radius, seed, paperCurl = 0) {
   return [
     `M${pt(topStart)}`,
     wavyEdge(topStart, topEnd, seed, 60),
-    `Q${pt(tr)} ${pt(rightStart)}`,
+    chamfer ? wavyEdge(topEnd, rightStart, seed, 80) : `Q${pt(tr)} ${pt(rightStart)}`,
     wavyEdge(rightStart, rightEnd, seed, 64),
     rightCorner,
     wavyEdge(bottomStart, bottomEnd, seed, 68),
@@ -173,7 +191,7 @@ function irregularPaperPath(x, y, width, height, radius, seed, paperCurl = 0) {
   ].join(' ');
 }
 
-function nodePaperPath(variant, x, y, width, height, radius, seed, paperCurl = 0) {
+function nodePaperPath(variant, x, y, width, height, radius, seed, curl = 0, cut = false) {
   // Every node is a sheet of paper. The seed changes the silhouette itself,
   // so the edges stay imperfect after the visible outline is removed.
   return irregularPaperPath(
@@ -183,8 +201,29 @@ function nodePaperPath(variant, x, y, width, height, radius, seed, paperCurl = 0
     height,
     radius,
     seed,
-    variant === 'note' ? paperCurl : 0,
+    curl,
+    cut,
   );
+}
+
+const cardFlag = (attributes, style, key) => Boolean(dataValue(attributes, key, style[key]));
+
+/** Hand-drawn mark paths for a card's level and kind (card-local, origin top-left of the box). */
+function levelKindMarks({ x, y, width, height, seed, cut, strip, outline, marker }) {
+  const marks = {};
+  if (cut) {
+    const size = cutSize(width, height);
+    marks.cut = `M${(x + width - size).toFixed(2)} ${(y + jitter(seed, 81, 1)).toFixed(2)} L${(x + width + jitter(seed, 82, 1)).toFixed(2)} ${(y + size).toFixed(2)}`;
+  }
+  if (strip) {
+    // A marker swash along the top: the section's colour tab.
+    const inset = Math.min(16, width * 0.08);
+    const top = y + 8 + jitter(seed, 83, 1.2);
+    marks.strip = `M${(x + inset).toFixed(2)} ${top.toFixed(2)} L${(x + width - inset - (cut ? cutSize(width, height) : 0)).toFixed(2)} ${(top + jitter(seed, 84, 1.6)).toFixed(2)}`;
+  }
+  if (outline) marks.outline = true;
+  if (marker) marks.marker = { cx: x + 3 + jitter(seed, 85, 1.5), cy: y + 3 + jitter(seed, 86, 1.5) };
+  return marks;
 }
 
 function accentDefinition(variant, x, y, width, height, padding, seed) {
@@ -204,7 +243,7 @@ function accentDefinition(variant, x, y, width, height, padding, seed) {
 function noteCurlDefinition(x, y, width, height, seed, paperCurl = 0) {
   const curl = clamp(paperCurl);
   if (!curl) return null;
-  const size = Math.min(24, Math.max(10, Math.min(width, height) * (0.08 + curl * 0.08)));
+  const size = curlSizeFor(width, height, curl);
   const displacedX = jitter(seed, 35, 1.8) * curl;
   const displacedY = jitter(seed, 36, 1.4) * curl;
   const right = x + width + displacedX;
@@ -291,6 +330,7 @@ function progressStyle(style, progress, isEdge, pathLength = 1000) {
   return next;
 }
 
+
 function iconTilt(id) {
   let hash = 2166136261;
   for (const ch of `icon:${id}`) { hash ^= ch.charCodeAt(0); hash = Math.imul(hash, 16777619); }
@@ -305,16 +345,17 @@ export class SketchNode extends BaseNode {
     const variant = nodeVariant(attributes);
     const radius = Number(style.radius ?? attributes.radius ?? 10);
     const seed = seedFor(attributes, this.id || 'node');
-    const paperCurl = clamp(dataValue(attributes, 'paperCurl', style.paperCurl ?? 0.35));
+    const paperCurl = shownCurl(variant, dataValue(attributes, 'paperCurl', style.paperCurl ?? 0.35), liftValue(attributes, style));
+    const cut = cardFlag(attributes, style, 'cardCutCorner');
     // The silhouette carries the hand-made character now. Rough.js is still
     // used for the paper fill, but its perimeter stroke is deliberately off.
     const roughStyle = { ...style, stroke: 'none', lineWidth: 0 };
     const key = [
-      'node', variant, seed, width, height, radius, paperCurl, roughStyle.stroke, roughStyle.fill,
+      'node', variant, seed, width, height, radius, paperCurl, cut, roughStyle.stroke, roughStyle.fill,
       roughStyle.lineWidth, roughStyle.roughness, roughStyle.bowing, roughStyle.fillStyle,
     ].join('|');
     return cachedPaths(key, () => generator.toPaths(
-      generator.path(nodePaperPath(variant, x, y, width, height, radius, seed, paperCurl), roughOptions(roughStyle, seed, { fill: true })),
+      generator.path(nodePaperPath(variant, x, y, width, height, radius, seed, paperCurl, cut), roughOptions(roughStyle, seed, { fill: true })),
     ));
   }
 
@@ -326,8 +367,8 @@ export class SketchNode extends BaseNode {
     const variant = nodeVariant(attributes);
     const radius = Number(style.radius ?? attributes.radius ?? 10);
     const seed = seedFor(attributes, this.id || 'node');
-    const paperCurl = clamp(dataValue(attributes, 'paperCurl', style.paperCurl ?? 0.35));
-    const paperPath = nodePaperPath(variant, x, y, width, height, radius, seed, paperCurl);
+    const paperCurl = shownCurl(variant, dataValue(attributes, 'paperCurl', style.paperCurl ?? 0.35), liftValue(attributes, style));
+    const paperPath = nodePaperPath(variant, x, y, width, height, radius, seed, paperCurl, cardFlag(attributes, style, 'cardCutCorner'));
     const perimeter = Math.max(width * 2 + height * 2, 1);
     const progress = dataValue(attributes, 'drawProgress', style.drawProgress);
     return progressStyle({
@@ -369,13 +410,17 @@ export class SketchNode extends BaseNode {
     const y = -height / 2;
     const seed = seedFor(attributes, this.id || 'node');
     const padding = Number(dataValue(attributes, 'textPadding', style.textPadding ?? 20));
-    const paperCurl = clamp(dataValue(attributes, 'paperCurl', style.paperCurl ?? 0.35));
-    const liftProgress = clamp(dataValue(attributes, 'liftProgress', style.liftProgress ?? 0));
-    const liftScale = 1 + 0.075 * liftProgress;
+    // Placing a card: held up (larger, softer and deeper shadow, extra tilt,
+    // corner curled) at lift 1, then pressed flat. A small negative lift is
+    // the landing press: the shadow tightens a touch below its resting value.
+    const lift = liftValue(attributes, style);
+    const liftProgress = Math.max(0, lift);
+    const paperCurl = shownCurl(variant, dataValue(attributes, 'paperCurl', style.paperCurl ?? 0.35), liftProgress);
+    const liftScale = 1 + 0.075 * lift;
     const paths = this.getSketchPaths(attributes, style);
     const fills = paths.filter((item) => item.fill && item.fill !== 'none');
     const surfacePath = pathData(fills)
-      || nodePaperPath(variant, x, y, width, height, Number(style.radius ?? attributes.radius ?? 10), seed, paperCurl);
+      || nodePaperPath(variant, x, y, width, height, Number(style.radius ?? attributes.radius ?? 10), seed, paperCurl, cardFlag(attributes, style, 'cardCutCorner'));
     const progress = dataValue(attributes, 'drawProgress', style.drawProgress) == null
       ? 1
       : clamp(dataValue(attributes, 'drawProgress', style.drawProgress));
@@ -386,8 +431,8 @@ export class SketchNode extends BaseNode {
       stroke: 'none',
       pointerEvents: 'none',
       shadowColor: style.shadowColor || '#173b6b14',
-      shadowBlur: (style.shadowBlur ?? 14) + 28 * liftProgress,
-      shadowOffsetY: (style.shadowOffsetY ?? 4) + 12 * liftProgress,
+      shadowBlur: Math.max(0, (style.shadowBlur ?? 14) + 28 * lift),
+      shadowOffsetY: Math.max(0, (style.shadowOffsetY ?? 4) + 12 * lift),
     } : false, container);
     const key = this.upsert('key', Path, this.getKeyStyle(attributes), container);
     this.upsert('paper-texture', Path, {
@@ -435,7 +480,7 @@ export class SketchNode extends BaseNode {
       pointerEvents: 'none',
     } : false, container);
 
-    const curl = variant === 'note' && dataValue(attributes, 'fold', true) !== false
+    const curl = paperCurl > 0 && dataValue(attributes, 'fold', true) !== false
       ? noteCurlDefinition(x, y, width, height, seed, paperCurl)
       : null;
     this.upsert('curl-shadow-soft', Path, curl ? {
@@ -476,16 +521,104 @@ export class SketchNode extends BaseNode {
     this.upsert('fold', Path, false, container);
 
     const textColor = style.textColor || dataValue(attributes, 'labelFill') || '#173b6b';
-    this.drawCardText(attributes, style, { variant, padding, progress, textColor, origin: [x, y] }, container);
+    this.drawLevelKindMarks(attributes, style, { x, y, width, height, seed, progress, surfacePath }, container);
+    this.drawCardText(attributes, style, { variant, padding, progress, textColor, origin: [x, y], held: this.textHeld(attributes, style) }, container);
     // This is an absolute local scale, so repeated graph updates never
     // compound the lift. The element origin is the node center; x/y data and
     // the key shape remain the source of truth for layout and hit testing.
-    drawWashiTape(this, attributes, container);
+    // A numbered step wears its round number sticker on the top-left corner,
+    // so its tape goes only on the opposite (bottom-right) corner.
+    const numbered = Number(dataValue(attributes, 'cardStep', style.cardStep ?? 0)) > 0
+      && (dataValue(attributes, 'cardMarker', style.cardMarker ?? '') || '') === 'number';
+    const tape = (index) => Number(dataValue(attributes, `tape${index}Progress`, 0)) || 0;
+    drawWashiTape(this, numbered ? { ...attributes, tape1Progress: 0, tape2Progress: Math.max(tape(1), tape(2)) } : attributes, container);
     drawDoodleDecoration(this, attributes, container);
     this.setLocalScale(liftScale, liftScale, 1);
     // A seeded tilt of at most 1.5 degrees: cut paper never sits square.
-    this.setLocalEulerAngles?.(jitter(seed, 90, 1.5));
+    // While lifted it turns a few more seeded degrees and straightens on landing.
+    const liftTilt = (jitter(seed, 91, 1) < 0 ? -1 : 1) * (2.5 + Math.abs(jitter(seed, 92, 2)));
+    this.setLocalEulerAngles?.(jitter(seed, 90, Number(dataValue(attributes, 'cardTilt', style.cardTilt ?? 1.5)) || 1.5)
+      + liftTilt * liftProgress);
     return key;
+  }
+
+  /**
+   * Level and kind marks: the title's inked outline, a section's colour strip,
+   * a decision's cut-corner stroke, a question's faint "?" and a task's step
+   * number or checkbox. Each is drawn only when its style flag is set.
+   */
+  drawLevelKindMarks(attributes, style, { x, y, width, height, seed, progress, surfacePath }, container) {
+    const ink = dataValue(attributes, 'cardInk', style.cardInk) || '#173b6b';
+    const outlineWidth = Number(dataValue(attributes, 'cardOutline', style.cardOutline ?? 0)) || 0;
+    const marker = dataValue(attributes, 'cardMarker', style.cardMarker ?? '') || '';
+    const marks = levelKindMarks({
+      x, y, width, height, seed,
+      cut: cardFlag(attributes, style, 'cardCutCorner'),
+      strip: cardFlag(attributes, style, 'cardStrip'),
+      outline: outlineWidth > 0,
+      marker,
+    });
+    const rough = (key, d, options) => cachedPaths(`${key}|${seed}|${d}`, () => generator.toPaths(generator.path(d, roughOptions({
+      roughness: 0.9, bowing: 0.6, disableMultiStroke: true, ...options,
+    }, seed + 211))));
+    const line = (name, d, options, attrs) => {
+      const drawn = d ? rough(name, d, options) : [];
+      this.upsert(name, Path, drawn.length ? {
+        d: pathData(drawn), fill: 'none', stroke: options.stroke, lineWidth: options.lineWidth,
+        lineCap: 'round', lineJoin: 'round', pointerEvents: 'none', zIndex: 1, ...attrs,
+      } : false, container);
+    };
+    line('level-outline', marks.outline ? surfacePath : null, { stroke: ink, lineWidth: outlineWidth, roughness: 0.7 }, { opacity: progress * 0.55 });
+    line('level-strip', marks.strip, { stroke: ink, lineWidth: 6, roughness: 1.1 }, { opacity: progress * 0.32 });
+    line('kind-cut', marks.cut, { stroke: ink, lineWidth: 1.4 }, { opacity: progress * 0.6 });
+    const mark = dataValue(attributes, 'cardCornerMark', style.cardCornerMark ?? '');
+    this.upsert('kind-mark', GText, mark ? {
+      x: x + width - 16 + jitter(seed, 87, 2), y: y + 6 + jitter(seed, 88, 2),
+      text: mark, fontFamily: 'Patrick Hand, cursive', fontSize: Math.min(34, Math.max(20, height * 0.22)),
+      fill: ink, opacity: progress * 0.34, textAlign: 'center', textBaseline: 'top',
+      transform: [['rotate', 8 + jitter(seed, 89, 6)]], transformOrigin: 'center',
+      pointerEvents: 'none', zIndex: 1,
+    } : false, container);
+    const badge = marks.marker;
+    const step = Number(dataValue(attributes, 'cardStep', style.cardStep ?? 0)) || 0;
+    const paper = style.fill || '#fcfcfc';
+    if (badge && marker === 'number' && step > 0) {
+      // A paper sticker: a white die-cut rim, a softly tinted centre in the
+      // card's colour, the number in ink, lifted by a small shadow, with one
+      // edge just starting to peel. It replaces washi tape on numbered steps.
+      const r = 15, inner = 11.5;
+      const cx = badge.cx + 4, cy = badge.cy + 4;
+      const ring = (radius, a, b) => `M${cx - radius} ${cy} a${radius} ${radius + a} 0 1 0 ${2 * radius} 0 a${radius} ${radius - b} 0 1 0 ${-2 * radius} 0`;
+      const wobble = [jitter(seed, 94, .7), jitter(seed, 95, .7)];
+      this.upsert('kind-badge', Path, { d: ring(r, ...wobble), fill: '#fffdf8', stroke: ink, strokeOpacity: .16, lineWidth: .8,
+        shadowColor: '#1a1f2a2e', shadowBlur: 4, shadowOffsetX: .5, shadowOffsetY: 1.5, opacity: progress, pointerEvents: 'none', zIndex: 3 }, container);
+      this.upsert('kind-badge-ring', Path, { d: ring(inner, wobble[1] * .6, wobble[0] * .6), fill: ink, fillOpacity: .2, stroke: 'none',
+        opacity: progress, pointerEvents: 'none', zIndex: 3 }, container);
+      // The peel: a sliver of the sticker's underside catching the light.
+      const peelAt = Math.PI * (1.4 + jitter(seed, 97, .25));
+      const px = cx + Math.cos(peelAt) * r, py = cy + Math.sin(peelAt) * r;
+      const tx = cx + Math.cos(peelAt + .5) * r * .92, ty = cy + Math.sin(peelAt + .5) * r * .92;
+      this.upsert('kind-check', Path, { d: `M${px} ${py} Q${(px + tx) / 2 + Math.cos(peelAt) * 3} ${(py + ty) / 2 + Math.sin(peelAt) * 3} ${tx} ${ty} Z`,
+        fill: '#efe9df', stroke: ink, strokeOpacity: .12, lineWidth: .6, opacity: progress, pointerEvents: 'none', zIndex: 3 }, container);
+      this.upsert('kind-badge-text', GText, {
+        x: cx, y: cy + 1, text: String(step), fontFamily: 'Patrick Hand, cursive', fontSize: 17,
+        fill: ink, opacity: progress * .9, textAlign: 'center', textBaseline: 'middle', pointerEvents: 'none', zIndex: 3,
+        transform: [['rotate', jitter(seed, 96, 6)]], transformOrigin: 'center',
+      }, container);
+    } else if (badge && marker === 'checkbox') {
+      const s = 13, left = badge.cx - s / 2 + 4, top = badge.cy - s / 2 + 4;
+      const done = cardFlag(attributes, style, 'cardDone');
+      const box = `M${left} ${top} L${left + s} ${top + jitter(seed, 91, 1)} L${left + s + jitter(seed, 92, 1)} ${top + s} L${left} ${top + s + jitter(seed, 93, 1)} Z`;
+      const tick = done ? ` M${left + 2.5} ${top + s * 0.55} L${left + s * 0.45} ${top + s - 2} L${left + s + 3} ${top - 3}` : '';
+      const drawn = rough('kind-check', box + tick, { stroke: ink, lineWidth: 1.2 });
+      this.upsert('kind-badge', Path, { d: box, fill: paper, stroke: 'none', opacity: progress, pointerEvents: 'none', zIndex: 3 }, container);
+      this.upsert('kind-check', Path, { d: pathData(drawn), fill: 'none', stroke: ink, lineWidth: 1.2, lineCap: 'round', lineJoin: 'round', opacity: progress * 0.7, pointerEvents: 'none', zIndex: 3 }, container);
+      this.upsert('kind-badge-ring', Path, false, container);
+      this.upsert('kind-badge-text', GText, false, container);
+    } else {
+      for (const name of ['kind-badge', 'kind-badge-ring', 'kind-check']) this.upsert(name, Path, false, container);
+      this.upsert('kind-badge-text', GText, false, container);
+    }
   }
 
   /** Attributes with the on-screen size, which eases toward the G6 size. */
@@ -527,7 +660,21 @@ export class SketchNode extends BaseNode {
     startTicking(this._cardTicker);
   }
 
-  drawCardText(attributes, style, { variant, padding, progress, textColor, origin }, container) {
+  /**
+   * A card being placed keeps its words back until it lands. The entrance
+   * refreshes `textHold` every frame; the hold lapses shortly after the last
+   * refresh, so a redraw that drops the style (or a cancelled entrance) can
+   * neither start the words early nor keep them hidden.
+   */
+  textHeld(attributes, style) {
+    const hold = dataValue(attributes, 'textHold', style.textHold);
+    const now = performance.now();
+    if (hold === false) this._textHoldUntil = 0;
+    else if (hold === true || dataValue(attributes, 'drawProgress', style.drawProgress) === 0) this._textHoldUntil = now + TEXT_HOLD_GRACE;
+    return hold !== false && now < (this._textHoldUntil || 0);
+  }
+
+  drawCardText(attributes, style, { variant, padding, progress, textColor, origin, held = false }, container) {
     // Single-text shapes from earlier renderer versions.
     this.upsert('heading', GText, false, container);
     this.upsert('body', GText, false, container);
@@ -596,12 +743,16 @@ export class SketchNode extends BaseNode {
       createText: (textStyle) => container.appendChild(new GText({ style: textStyle })),
       removeText: (shape) => { if (!shape.destroyed) shape.remove(); },
       reducedMotion: prefersReducedMotion,
+      onGeometryChange: () => {
+        if (!this.destroyed && this._cardSource) drawDoodleDecoration(this, this.shownCardAttributes(this._cardSource), this);
+      },
       onFontsChanged: () => {
         this._cardLayoutKey = null;
         if (!this.destroyed && this._cardSource) this.drawKeyShape(this._cardSource, this);
       },
     });
     const growing = time - this._sizeMotion.start < CARD_GROW.duration;
+    if (held) return;
     this._cardWords.sync(layout.words, {
       origin,
       opacity,
@@ -617,45 +768,66 @@ export class SketchNode extends BaseNode {
   }
 }
 
-export class SketchEdge extends BaseEdge {
-  // The head is drawn inside the key path (see getKeyStyle), so G6's marker
-  // arrows, and the path shortening they bring, stay off.
-  drawSourceArrow(attributes) { this.drawArrow({ ...attributes, startArrow: false }, 'start'); }
+/**
+ * The arrowhead is part of the connector's own stroke: one open chevron,
+ * inked last, so it never sits on the shaft as a separate darker mark.
+ */
+const ARROW_INK = 19;
+function arrowhead(last) {
+  if (last?.[0] !== 'C') return [];
+  const c2 = last.slice(3, 5), tip = last.slice(5, 7);
+  const angle = Math.atan2(tip[1] - c2[1], tip[0] - c2[0]);
+  const wing = (turn, size) => [tip[0] - Math.cos(angle + turn) * size, tip[1] - Math.sin(angle + turn) * size];
+  return [['M', ...wing(0.5, 10)], ['L', ...tip], ['L', ...wing(-0.5, 9)]];
+}
 
-  drawTargetArrow(attributes) {
-    this.drawArrow({ ...attributes, endArrow: false }, 'end');
-    const key = this.shapeMap.key;
-    if (key) key.style.markerEndOffset = 0;
+export class SketchEdge extends Polyline {
+  // Geometry comes only from the organic router (graph-edge-routes.js), which
+  // works from card positions and sizes; G6's own routers are never used.
+  getControlPoints() { return []; }
+
+  getPoints(attributes) {
+    const route = organicRoute(this.context.graph, this.id);
+    if (!route) return super.getPoints(attributes);
+    this._inkLength = route.length;
+    return route.points;
   }
 
   getKeyPath(attributes) {
-    const [source, target] = this.getEndpoints(attributes);
-    const seed = seedFor(attributes, this.id || `${attributes.source}:${attributes.target}`);
-    return graphEdgeRoute(this.context.graph, this.id, source, target, seed).path;
+    const route = organicRoute(this.context.graph, this.id);
+    if (!route) return super.getKeyPath(attributes);
+    this._inkLength = route.length + ARROW_INK;
+    return [...route.path, ...arrowhead(route.path.at(-1))];
   }
 
   getKeyStyle(attributes) {
-    const style = super.getKeyStyle(attributes);
-    const rawStyle = this.getGraphicStyle(attributes);
-    const [source, target] = this.getEndpoints(attributes);
-    const seed = seedFor(attributes, this.id || `${attributes.source}:${attributes.target}`);
-    const route = graphEdgeRoute(this.context.graph, this.id, source, target, seed);
-    // Stroke and head share one seeded scale, so a heavier line gets a bigger head.
-    const scale = sketchEdgeScale(seed);
-    const lineWidth = Math.max(1.5, (Number(rawStyle.lineWidth) || 2.7) * scale);
-    const head = (attributes.edgeRole === 'primary' ? 14 : 11) * scale;
-    const progress = rawStyle.drawProgress == null ? 1 : clamp(rawStyle.drawProgress);
-    const key = ['ink-edge', seed, route.d, lineWidth, Math.round(progress * 400)].join('|');
-    const ink = cachedPaths(key, () => inkArrowPath(route, seed, { width: lineWidth, head, progress, overlap: 8 }));
-    const revealed = progressStyle({ ...style, strokeOpacity: rawStyle.strokeOpacity ?? .82 }, rawStyle.drawProgress, true, route.length);
-    // One translucent fill per arrow lets the paper grain through without darker overlaps.
-    return { ...style, d: ink.d || 'M0 0', fill: rawStyle.stroke || '#1c4690', fillOpacity: revealed.strokeOpacity,
-      stroke: 'none', lineWidth: 0, lineDash: [], increasedLineWidthForHitTesting: 10 };
+    const style = super.getKeyStyle({ ...attributes, radius: EDGE_CORNER_RADIUS });
+    const progress = clamp(attributes.drawProgress ?? 1);
+    const length = Math.max(1, this._inkLength || 1);
+    const seed = seedFor(attributes, this.id);
+    const pressure = .9 + (seed % 101) / 500;
+    const width = (attributes.lineWidth || 2.2) * pressure;
+    const nativePath = Array.isArray(style.d) ? style.d.map(part => part.join(' ')).join(' ') : String(style.d || '');
+    // Keep the routed curve and its endpoints. Rough.js adds only a small,
+    // seeded pen tremor once cards are settled; while they move, the clean
+    // curve follows them without regenerating ink every frame.
+    if (edgeRoutesFrozen(this.context.graph)) this._inkTexture = style.d;
+    else {
+      const paths = cachedPaths(`edge-ink:${seed}:${width}:${nativePath}`, () => generator.toPaths(generator.path(nativePath, {
+        seed, roughness: .55, bowing: .25, maxRandomnessOffset: .85,
+        preserveVertices: true, disableMultiStroke: true, stroke: style.stroke || '#123f85', strokeWidth: width, fill: 'none',
+      })));
+      this._inkTexture = pathData(paths) || style.d;
+    }
+    return { ...style, d: this._inkTexture, fill: 'none', lineWidth: width,
+      lineCap: 'round', lineJoin: 'round',
+      lineDash: progress < 1 ? [length, length] : [], lineDashOffset: length * (1 - progress),
+      strokeOpacity: progress === 0 ? 0 : (attributes.strokeOpacity ?? .85) * (.9 + (seed % 17) / 170),
+      increasedLineWidthForHitTesting: 8 };
   }
 
-  drawKeyShape(attributes, container) {
-    return this.upsert('key', Path, this.getKeyStyle(attributes), container);
-  }
+  // The arrowhead is drawn inside the routed path (graph-edge-routes.js).
+  drawTargetArrow(attributes) { super.drawTargetArrow({ ...attributes, endArrow: false }); }
 }
 
 export function registerSketchElements() {

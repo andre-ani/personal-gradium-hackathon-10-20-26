@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import time
 from pathlib import Path
 from urllib.parse import urlsplit
 from uuid import uuid4
@@ -10,6 +11,7 @@ import fastapi
 import gradbot
 import providers
 import voice_session
+from map_controls import MapControls, workspace
 from illustrated_graph import IllustratedGraphSession as GraphSession, default_service
 
 SYSTEM_PROMPT = """You are Cara, a friendly artist who draws people's ideas.
@@ -40,7 +42,7 @@ Notice what belongs together, what is an example, and what causes what.
 Name ideas in a few words; don't copy their speech.
 
 WHEN THEY ASK YOU TO MAP A TOPIC:
-If they ask you to map, explain, brainstorm, or "write" a topic, do it out loud.
+If they ask you to map, draw, diagram, explain, brainstorm, or "write" a topic, do it out loud.
 Your own words get drawn on the board as you say them.
 Here you may say more sentences, but each one short and ending with a period.
 Same simple words. Same 4 to 10 word sentences.
@@ -62,6 +64,10 @@ A drawing queue then puts them on the board, one by one.
 Transcript, ideas, queued drawing, and finished drawing are different states.
 Workspace data below shows the current state and refreshes as you talk.
 Use inspect_graph for fresher state, especially before saying something is drawn.
+Use edit_map for explicit changes: rename, correct, reparent, connect, disconnect, or remove cards.
+Inspect the current graph first and use its exact IDs. Never claim an edit succeeded before the tool succeeds.
+Use arrange_map for radial ideas, sequential flow, horizontal, vertical or compact layout, and move_card to move one card beside another.
+Layout changes affect placement, not ideas or relationships. They are queued until the browser acknowledges them.
 Use refine_graph when an idea needs another look.
 These tools are silent. They don't draw right away or do real-world actions.
 Only call something drawn when the data shows it is finished.
@@ -153,6 +159,17 @@ VOICE_TOOLS = [
             "required": ["description"], "additionalProperties": False}),
     ),
 ]
+GRAPH_TOOLS += [
+    gradbot.ToolDef("edit_map", "Edit the actual mind map after inspecting its IDs. Apply explicit user corrections, renames, parent changes, links or removals. Do not merely describe edits.", json.dumps({
+        "type": "object", "properties": {"operations": {"type": "array", "items": {
+            "type": "object", "properties": {
+                "type": {"type": "string", "enum": ["add_node", "update_node", "remove_node", "add_edge", "remove_edge"]},
+                "node": {"type": "object", "properties": {key: {"type": ["string", "null"]} for key in ["id", "label", "body", "kind", "status", "parent_id", "near", "group"]}},
+                "edge": {"type": "object", "properties": {key: {"type": ["string", "null"]} for key in ["id", "source", "target", "label"]}},
+            }, "required": ["type"], "additionalProperties": False}}}, "required": ["operations"], "additionalProperties": False})),
+    gradbot.ToolDef("arrange_map", "Rearrange the visible map without changing meaning. Use flow for sequential processes, radial for related ideas, or compact to reduce sprawl.", json.dumps({"type": "object", "properties": {"orientation": {"type": "string", "enum": ["radial", "flow", "horizontal", "vertical", "compact"]}}, "required": ["orientation"], "additionalProperties": False})),
+    gradbot.ToolDef("move_card", "Move a visible card beside another existing card, without changing its parent or meaning.", json.dumps({"type": "object", "properties": {"node_id": {"type": "string"}, "reference_id": {"type": "string"}, "placement": {"type": "string", "enum": ["left", "right", "above", "below"]}}, "required": ["node_id", "reference_id", "placement"], "additionalProperties": False})),
+]
 TOOLS = GRAPH_TOOLS + VOICE_TOOLS
 
 
@@ -166,7 +183,7 @@ def style_instructions(style) -> str:
 
 
 def make_config(msg: dict, graph=None, rendered_revision=None, greeting=False, style=None) -> gradbot.SessionConfig:
-    context = graph.voice_context(rendered_revision) if graph else {'connected': False}
+    context = workspace(graph, rendered_revision) if graph else {'connected': False}
     return gradbot.SessionConfig(
         voice_id=style.voice_id if style else VOICE_ID,
         language=gradbot.LANGUAGES[style.language if style else "en"],
@@ -197,15 +214,21 @@ async def ws_chat(websocket: fastapi.WebSocket):
     graph = None
     rendered_revision = None
     started_session_id = None
+    server_transcript = False
     style = voice_session.VoiceStyle(VOICE_ID)
 
     def on_start(msg):
-        nonlocal graph, started_session_id
+        nonlocal graph, started_session_id, style, server_transcript
         started_session_id = msg.get("graph_session_id", "")
+        server_transcript = msg.get("server_transcript") is True
         graph = graph_sessions.get(started_session_id)
         if graph is None:
             raise RuntimeError('Reconnect the graph workspace before starting voice.')
-        return make_config(msg, graph, greeting=True, style=style)
+        style = getattr(graph, 'voice_style', style)
+        graph.voice_style = style
+        first = not getattr(graph, 'voice_started', False)
+        graph.voice_started = True
+        return make_config(msg, graph, greeting=first, style=style)
 
     def on_config(msg):
         nonlocal rendered_revision
@@ -246,13 +269,26 @@ async def ws_chat(websocket: fastapi.WebSocket):
                                   "This is the closest one here. Say so briefly.")
             await handle.send_json(result)
         elif handle.name == "inspect_graph":
-            await handle.send_json(graph.voice_context(rendered_revision))
+            await handle.send_json(workspace(graph, rendered_revision))
+        elif handle.name in ("edit_map", "arrange_map", "move_card"):
+            try:
+                await graph._emit({'type': 'debug_event', 'stage': 'tool', 'label': handle.name, 'detail': 'Requested'})
+                if handle.name == 'edit_map':
+                    result = await graph.edit(handle.args.get('operations'))
+                elif handle.name == 'arrange_map':
+                    result = await graph.controls.request('arrange', orientation=handle.args.get('orientation'))
+                else:
+                    result = await graph.controls.request('move', **{key: handle.args.get(key) for key in ('node_id', 'reference_id', 'placement')})
+                await handle.send_json(result)
+                await refresh()
+            except ValueError as exc:
+                await handle.send_error(str(exc))
         elif handle.name == "refine_graph":
             # The graph layer already owns the transcript; never append the
             # assistant's paraphrase as if it were new user speech.
             await graph.request_refinement(handle.args.get('concept'))
             await handle.send_json({"accepted": True, "message": "Interpretation requested; drawing is not complete.",
-                                    "workspace": graph.voice_context(rendered_revision)})
+                                    "workspace": workspace(graph, rendered_revision)})
         else:
             await handle.send_error("Unknown graph tool")
 
@@ -265,10 +301,15 @@ async def ws_chat(websocket: fastapi.WebSocket):
         return (graph is not None and graph_sessions.get(started_session_id) is graph
                 and graph.decorations.get(event['node_id']) == event)
 
+    async def on_transcript(text, speaker):
+        if server_transcript and graph is not None and graph_sessions.get(started_session_id) is graph:
+            await graph._emit({'type': 'debug_event', 'stage': 'transcript', 'label': 'You' if speaker == 'user' else 'Cara', 'detail': text[:2000]})
+            await graph.ingest(text, mode='append', speaker=speaker)
+
     await voice_session.handle_session(
         websocket, config=cfg, on_start=on_start, on_config=on_config, on_tool_call=on_tool_call,
         on_reaction=on_reaction,
-        on_reaction_valid=on_reaction_valid,
+        on_reaction_valid=on_reaction_valid, on_transcript=on_transcript,
     )
 
 
@@ -299,13 +340,28 @@ async def graph_socket(websocket: fastapi.WebSocket):
     await websocket.accept()
     # Serialize writes from the heartbeat, model work, and input errors.
     lock = asyncio.Lock()
+    started_at = time.monotonic()
+    processing_at = None
 
     async def send(event):
+        nonlocal processing_at
+        trace = None
+        if event.get('type') == 'graph_status':
+            state = event.get('status')
+            if state == 'working':
+                processing_at = time.monotonic()
+            trace = {'stage': 'interpretation', 'label': state, 'detail': event.get('message', ''),
+                     'duration_ms': round((time.monotonic() - processing_at) * 1000) if state in ('idle', 'unavailable') and processing_at else None}
+        elif event.get('type') == 'graph_patch':
+            trace = {'stage': 'patch', 'label': event.get('layer', 'map'), 'detail': event.get('op', {}).get('type', ''), 'revision': event.get('revision')}
         async with lock:
             await websocket.send_json(event)
+            if trace:
+                await websocket.send_json({'type': 'debug_event', 'server_ms': round((time.monotonic() - started_at) * 1000), **trace})
 
     session_id = uuid4().hex
     session = GraphSession(send)
+    session.controls = MapControls(session)
     graph_sessions[session_id] = session
     try:
         await send({"type": "graph_session", "id": session_id})
@@ -319,9 +375,18 @@ async def graph_socket(websocket: fastapi.WebSocket):
                 msg = json.loads(raw)
                 if not isinstance(msg, dict):
                     raise ValueError("Expected an object")
-                if msg.get("type") == "reset":
+                if msg.get('type') == 'layout_applied':
+                    result = session.controls.acknowledge(msg)
+                    await send({'type': 'layout_receipt', **result})
+                elif msg.get('type') == 'map_edit':
+                    # Same validated domain path as Cara, useful without a microphone.
+                    result = await session.edit(msg.get('operations'))
+                    await send({'type': 'edit_receipt', **result})
+                elif msg.get("type") == "reset":
                     await session.reset()
+                    session.controls = MapControls(session)
                 elif msg.get("type") == "text" and isinstance(msg.get("text"), str):
+                    await send({'type': 'debug_event', 'stage': 'transcript', 'label': 'Typed text', 'detail': msg['text'][:2000]})
                     await session.ingest(msg["text"], mode=msg.get("mode", "append"),
                                          speaker=msg.get("speaker", "user"))
                 elif msg.get('type') == 'decoration_applied':
@@ -330,8 +395,8 @@ async def graph_socket(websocket: fastapi.WebSocket):
                                 'node_id': msg.get('node_id'), 'event': event})
                 else:
                     raise ValueError("Expected text or reset")
-            except (ValueError, TypeError):
-                await send({"type": "graph_error", "message": "Send text with append or replace mode and a user or assistant speaker, or reset the graph."})
+            except (ValueError, TypeError) as exc:
+                await send({"type": "graph_error", "message": str(exc)[:240] or "The map request could not be applied."})
     except fastapi.WebSocketDisconnect:
         pass
     finally:

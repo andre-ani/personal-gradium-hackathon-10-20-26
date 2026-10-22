@@ -8,7 +8,47 @@ import { animate } from 'motion';
  * untouched: only the transient style value is updated frame by frame.
  */
 
-const DEFAULT_DURATION = 240;
+/**
+ * Entrance timings. Arrows are inked like a pen stroke: a gentle ease in and
+ * out over a duration scaled by the connector's length, with the arrowhead
+ * appearing only at the end (SketchEdge shows it from progress 0.98). Cards
+ * are placed like sticky notes: they arrive lifted, drop onto the paper with a
+ * small press, and only then write their words. New elements are drawn one
+ * after another with a short pause between them; durations never shrink for a
+ * big batch.
+ */
+export const EDGE_DRAW = { min: 600, max: 1300, base: 520, perPixel: 1.1, fallbackLength: 300, ease: [0.55, 0.06, 0.32, 1] };
+export const CARD_LANDING = { duration: 900, appear: 0.3, drop: 0.78, press: 0.08 };
+/** Pause (ms) between one element finishing and the next starting. */
+export const ENTRANCE_STAGGER = 260;
+
+/** Pen duration (ms) for a connector of `length` canvas pixels. */
+export function edgeDrawDuration(length) {
+  const ink = Number.isFinite(length) && length > 0 ? length : EDGE_DRAW.fallbackLength;
+  return Math.round(Math.min(EDGE_DRAW.max, Math.max(EDGE_DRAW.min, EDGE_DRAW.base + ink * EDGE_DRAW.perPixel)));
+}
+
+const easeOutCubic = (t) => 1 - (1 - t) ** 3;
+const easeInOutSine = (t) => -(Math.cos(Math.PI * t) - 1) / 2;
+
+/**
+ * One frame of a card being placed, for linear time `t` in [0, 1]:
+ * the paper fades in while held up (lift 1), drops flat by `drop`, then a
+ * tiny press below the paper (negative lift) settles back to rest. Its words
+ * stay held until the landing is complete.
+ */
+export function cardLandingFrame(t) {
+  const p = Math.min(1, Math.max(0, Number(t) || 0));
+  if (p >= 1) return { drawProgress: 1, liftProgress: 0, textHold: false };
+  const { appear, drop, press } = CARD_LANDING;
+  const drawProgress = easeOutCubic(Math.min(1, p / appear));
+  const lift = p < drop
+    ? 1 - easeInOutSine(p / drop)
+    : -press * Math.sin(Math.PI * (p - drop) / (1 - drop));
+  return { drawProgress, liftProgress: Math.round(lift * 10000) / 10000, textHold: true };
+}
+
+const edgeFrame = (value) => ({ drawProgress: value });
 const renderState = new WeakMap();
 
 // A graph may be redrawn after every streamed patch. Remember which element
@@ -20,6 +60,7 @@ function stateFor(graph) {
   if (!state) {
     state = {
       cancellations: new Set(),
+      inflight: new Map(),
       nodes: { active: new Set(), complete: new Set() },
       edges: { active: new Set(), complete: new Set() },
     };
@@ -71,17 +112,19 @@ async function flushDraw(graph) {
   }
 }
 
-function setProgress(graph, kind, id, progress) {
-  const patch = [{ id, style: { drawProgress: progress } }];
+function setStyle(graph, kind, id, style) {
+  const patch = [{ id, style }];
   if (kind === 'node') graph.updateNodeData(patch);
   else graph.updateEdgeData(patch);
   requestDraw(graph);
 }
 
-async function animateElement(graph, kind, id, duration, signal, state, animateDriver) {
+const finalStyle = (kind) => (kind === 'node' ? cardLandingFrame(1) : edgeFrame(1));
+
+async function animateElement(graph, kind, id, { duration, ease, frame }, signal, state, animateDriver) {
   const valid = () => !signal?.aborted && entranceState.get(graph) === state;
   if (!valid()) return false;
-  setProgress(graph, kind, id, 0);
+  setStyle(graph, kind, id, frame(0));
   let controls;
   let finished = false;
   let settle;
@@ -95,20 +138,67 @@ async function animateElement(graph, kind, id, duration, signal, state, animateD
   try {
     controls = animateDriver(0, 1, {
       duration: duration / 1000,
-      ease: 'easeOut',
-      onUpdate: (progress) => {
-        if (valid()) setProgress(graph, kind, id, progress);
+      ease,
+      onUpdate: (value) => {
+        if (valid()) setStyle(graph, kind, id, frame(value));
       },
       onComplete: () => { finished = true; settle(); },
     });
     await completion;
-    if (finished && valid()) setProgress(graph, kind, id, 1);
+    if (finished && valid()) setStyle(graph, kind, id, frame(1));
     await flushDraw(graph);
     return finished && valid();
   } finally {
     signal?.removeEventListener('abort', cancel);
     state.cancellations.delete(cancel);
   }
+}
+
+/** Resolve after `ms`, or early (false) on abort or reset. */
+function pause(ms, signal, state) {
+  if (!(ms > 0)) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    let timer;
+    const cancel = () => { clearTimeout(timer); done(false); };
+    const done = (value) => {
+      state.cancellations.delete(cancel);
+      signal?.removeEventListener('abort', cancel);
+      resolve(value);
+    };
+    timer = setTimeout(() => done(true), ms);
+    state.cancellations.add(cancel);
+    signal?.addEventListener('abort', cancel, { once: true });
+  });
+}
+
+function nodePoint(graph, id) {
+  try {
+    const point = graph.getElementPosition?.(id);
+    if (point && Number.isFinite(point[0]) && Number.isFinite(point[1])) return point;
+  } catch {
+    // Not rendered yet; fall back to its data.
+  }
+  try {
+    const data = graph.getNodeData?.(id);
+    const style = (Array.isArray(data) ? data[0] : data)?.style;
+    if (Number.isFinite(style?.x) && Number.isFinite(style?.y)) return [style.x, style.y];
+  } catch {
+    // Removed between patches.
+  }
+  return null;
+}
+
+/** Centre-to-centre length of a connector, when its cards are placed. */
+function edgeLength(graph, endpoints) {
+  if (!endpoints) return undefined;
+  const a = nodePoint(graph, endpoints.source);
+  const b = nodePoint(graph, endpoints.target);
+  return a && b ? Math.hypot(b[0] - a[0], b[1] - a[1]) : undefined;
+}
+
+function motionFor(graph, kind, item, id) {
+  if (kind === 'node') return { duration: CARD_LANDING.duration, ease: 'linear', frame: cardLandingFrame };
+  return { duration: edgeDrawDuration(edgeLength(graph, edgeEndpoints(graph, item, id))), ease: EDGE_DRAW.ease, frame: edgeFrame };
 }
 
 function uniqueWork(items, elementState) {
@@ -217,19 +307,13 @@ function dependencyPlan(graph, nodeWork, edgeWork, state) {
   return ordered;
 }
 
-async function runElement(graph, kind, id, state, reducedMotion, duration, signal, animateDriver) {
+async function runReduced(graph, kind, id, state) {
   const elementState = state[kind === 'node' ? 'nodes' : 'edges'];
   if (elementState.complete.has(id) || elementState.active.has(id)) return true;
-  elementState.active.add(id);
-  try {
-    const finished = reducedMotion
-      ? (setProgress(graph, kind, id, 1), await flushDraw(graph), true)
-      : await animateElement(graph, kind, id, Math.max(1, duration), signal, state, animateDriver);
-    if (finished) elementState.complete.add(id);
-    return finished;
-  } finally {
-    elementState.active.delete(id);
-  }
+  setStyle(graph, kind, id, finalStyle(kind));
+  await flushDraw(graph);
+  elementState.complete.add(id);
+  return true;
 }
 
 /**
@@ -248,7 +332,8 @@ export async function drawSketchEntrance(
     nodes = [],
     edges = [],
     reducedMotion = false,
-    duration = DEFAULT_DURATION,
+    stagger = ENTRANCE_STAGGER,
+    sequential = true,
     signal,
     animateDriver = animate,
   } = {},
@@ -263,12 +348,57 @@ export async function drawSketchEntrance(
     ...nodeWork.map((entry) => ({ kind: 'node', ...entry })),
   ];
 
-  const elementDuration = Math.min(duration, 280 / Math.max(1, plan.length));
-  for (const { kind, id } of plan) {
-    if (signal?.aborted || entranceState.get(graph) !== state) return;
-    const finished = await runElement(graph, kind, id, state, reducedMotion, elementDuration, signal, animateDriver);
-    if (!finished || signal?.aborted) return;
+  if (reducedMotion) {
+    for (const { kind, id } of plan) {
+      if (signal?.aborted || entranceState.get(graph) !== state) return;
+      await runReduced(graph, kind, id, state);
+    }
+    return;
   }
+
+  // Each element starts a short pause after the previous one has finished
+  // (or, when not sequential, after it started), and never
+  // before what it depends on (a connector's source card, a card's incoming
+  // connectors) has finished, including ones still running from an earlier
+  // call. Plan order is therefore also start order.
+  const key = (kind, id) => `${kind}:${id}`;
+  const runs = [];
+  let previousStart = null;
+  for (const entry of plan) {
+    const { kind, item, id } = entry;
+    const elementState = state[kind === 'node' ? 'nodes' : 'edges'];
+    const endpoints = kind === 'edge' ? edgeEndpoints(graph, item, id) : null;
+    // Plan order puts a card's incoming connectors (and a connector's source
+    // card) earlier, so they are already registered as in flight.
+    const deps = kind === 'edge'
+      ? [state.inflight.get(key('node', endpoints?.source))?.run]
+      : [...state.inflight.values()].filter((other) => other.kind === 'edge' && other.target === id).map((other) => other.run);
+    const after = previousStart;
+    let started;
+    const startedPromise = new Promise((resolve) => { started = resolve; });
+    elementState.active.add(id);
+    const run = (async () => {
+      try {
+        // With nothing to wait for (the first element) it starts synchronously.
+        const waits = deps.filter(Boolean);
+        if (after && !(await after && await pause(stagger, signal, state))) return false;
+        if (waits.length && (await Promise.all(waits)).includes(false)) return false;
+        if (signal?.aborted || entranceState.get(graph) !== state) return false;
+        started(true);
+        const finished = await animateElement(graph, kind, id, motionFor(graph, kind, item, id), signal, state, animateDriver);
+        if (finished) elementState.complete.add(id);
+        return finished;
+      } finally {
+        started(false);
+        elementState.active.delete(id);
+        if (state.inflight.get(key(kind, id))?.run === run) state.inflight.delete(key(kind, id));
+      }
+    })();
+    previousStart = sequential ? run : startedPromise;
+    state.inflight.set(key(kind, id), { kind, target: endpoints?.target, run });
+    runs.push(run);
+  }
+  await Promise.all(runs);
 }
 
 /** Clear the per-graph completed-id cache, allowing a fresh entrance pass. */
@@ -322,4 +452,18 @@ export async function animateSketchUpdates(
     signal?.removeEventListener('abort', cancel);
     state.cancellations.delete(cancel);
   }
+}
+
+
+/** Re-ink existing connectors after their new routes are settled. */
+export async function redrawSketchEdges(graph, { edges = [], reducedMotion = false, signal } = {}) {
+  if (signal?.aborted) return;
+  const state = stateFor(graph);
+  const ids = edges.map(idOf).filter(id => id !== undefined);
+  for (const id of ids) state.edges.complete.delete(id);
+  graph.updateEdgeData(ids.map(id => ({ id, style: { drawProgress: reducedMotion ? 1 : 0 } })));
+  await graph.draw();
+  await graph.showElement(ids, false);
+  // Re-inking many settled routes uses a quicker stagger than new arrivals.
+  await drawSketchEntrance(graph, { edges: ids, reducedMotion, signal, stagger: 60, sequential: false });
 }

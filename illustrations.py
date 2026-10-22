@@ -306,9 +306,14 @@ class IllustrationService:
 
 
 class GraphIllustrations:
-    """Session-local latest-label jobs; completion only enqueues a graph patch."""
-    def __init__(self, deliver, service):
-        self.deliver, self.service = deliver, service
+    """Session-local latest-label jobs; completion only enqueues a graph patch.
+
+    Drawing starts only once the map has been quiet for `settle` seconds, so
+    pictures are made for cards that stayed, not for every interim label.
+    """
+    def __init__(self, deliver, service, settle=4.0):
+        self.deliver, self.service, self.settle = deliver, service, settle
+        self.last_offer = 0.0
         self.pending, self.latest, self.palettes = {}, {}, {}
         self.wake = asyncio.Event()
         self.tasks = []
@@ -323,6 +328,7 @@ class GraphIllustrations:
         if not concept:
             return
         self.pending[ident] = concept, palette
+        self.last_offer = asyncio.get_running_loop().time()
         self.wake.set()
         if not self.tasks:
             self.tasks = [asyncio.create_task(self._worker()) for _ in range(2)]
@@ -330,6 +336,9 @@ class GraphIllustrations:
     async def _worker(self):
         while True:
             await self.wake.wait()
+            loop = asyncio.get_running_loop()
+            while (quiet := self.last_offer + self.settle - loop.time()) > 0:
+                await asyncio.sleep(quiet)
             if not self.pending:
                 self.wake.clear()
                 continue

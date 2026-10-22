@@ -70,3 +70,42 @@ test('drawing uses the supplied palette ink, translucent strokes and a progressi
   const hidden = render('tea', { decorationType: 'heart', decorationProgress: 0 });
   assert.equal(hidden.get('doodle-0'), false);
 });
+
+test('circle and underline follow the laid-out heading words across wrapped lines', async () => {
+  const { headingLineGeometry, layoutCard } = await import('../frontend/card-text.js');
+  const font = { size: 24, family: 'Patrick Hand', weight: 400 };
+  const card = { width: 220, height: 160 };
+  const layout = layoutCard({ ...card, padding: 20, mode: 'sparse', heading: 'A rather long heading that wraps',
+    headingFont: font, bodyFont: { size: 13, family: 'Patrick Hand' }, measure: text => text.length * 11 });
+  const words = layout.words.filter(word => word.role === 'heading');
+  const origin = [-card.width / 2, -card.height / 2];
+  const geometry = headingLineGeometry(words, origin);
+  assert.ok(geometry.lines.length >= 2, 'the heading wraps');
+  const frame = { x: origin[0], y: origin[1], ...card };
+  const parse = d => d.slice(1).split('L').map(pair => pair.trim().split(' ').map(Number));
+
+  const underlines = doodleStrokes('underline', frame, 'w', { heading: geometry });
+  assert.equal(underlines.length, geometry.lines.length);
+  underlines.forEach(({ d }, index) => {
+    const line = geometry.lines[index], points = parse(d);
+    const xs = points.map(([x]) => x), ys = points.map(([, y]) => y);
+    assert.ok(Math.min(...xs) <= line.minX && Math.max(...xs) >= line.maxX, 'spans its line');
+    assert.ok(Math.min(...ys) > line.baseline && Math.max(...ys) < line.baseline + 12, 'just under its baseline');
+  });
+
+  const [{ d }] = doodleStrokes('circle', frame, 'w', { heading: geometry });
+  const ring = parse(d);
+  const cx = (geometry.minX + geometry.maxX) / 2, cy = (geometry.minY + geometry.maxY) / 2;
+  // Every word corner lies inside the drawn loop (checked along rays from the centre).
+  for (const word of words) {
+    const left = origin[0] + word.x, top = origin[1] + word.y;
+    for (const [x, y] of [[left, top], [left + word.width, top], [left, top + 24 * 1.04], [left + word.width, top + 24 * 1.04]]) {
+      const angle = Math.atan2(y - cy, x - cx), reach = Math.hypot(x - cx, y - cy);
+      const near = ring.reduce((best, [px, py]) => {
+        const delta = Math.abs(Math.atan2(Math.sin(Math.atan2(py - cy, px - cx) - angle), Math.cos(Math.atan2(py - cy, px - cx) - angle)));
+        return delta < best.delta ? { delta, reach: Math.hypot(px - cx, py - cy) } : best;
+      }, { delta: Infinity, reach: 0 });
+      assert.ok(near.reach > reach, `ring clears ${word.text} at ${x.toFixed(1)},${y.toFixed(1)}`);
+    }
+  }
+});

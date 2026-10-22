@@ -306,6 +306,29 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.session._aliases,
                          {'model2': 'model'})
 
+    async def test_reparent_moves_containment_edge_and_rejects_cycles(self):
+        enqueue = self.session._enqueue_meaning
+        node = lambda ident, label, parent=None: {'type': 'add_node', 'node': {
+            'id': ident, 'label': label, 'kind': 'task', 'status': 'named', 'parent_id': parent}}
+        enqueue(node('root', 'Baking cupcakes'), {})
+        enqueue(node('mix', 'Mix dry', 'root'), {k: dict(v) for k, v in self.session._desired.items()})
+        await asyncio.sleep(.08)
+        self.assertIn('contains:root:mix', self.session.edges)
+        basis = {k: dict(v) for k, v in self.session._desired.items()}
+        enqueue(node('prep', 'Prep', 'root'), basis)
+        basis = {k: dict(v) for k, v in self.session._desired.items()}
+        enqueue({'type': 'update_node', 'node': {'id': 'mix', 'parent_id': 'prep'}}, basis)
+        await asyncio.sleep(.12)
+        self.assertEqual(self.session.nodes['mix']['parent_id'], 'prep')
+        self.assertIn('contains:prep:mix', self.session.edges)
+        self.assertNotIn('contains:root:mix', self.session.edges)
+        removed = [e for e in self.events if e['type'] == 'graph_patch' and e['op']['type'] == 'remove_edge']
+        self.assertEqual([e['op']['edge']['id'] for e in removed], ['contains:root:mix'])
+        # Moving a section under its own child would create a cycle.
+        basis = {k: dict(v) for k, v in self.session._desired.items()}
+        enqueue({'type': 'update_node', 'node': {'id': 'prep', 'parent_id': 'mix'}}, basis)
+        self.assertEqual(self.session._desired['prep']['parent_id'], 'root')
+
     async def test_label_dedupe_never_merges_into_lineage(self):
         enqueue = self.session._enqueue_meaning
         enqueue({'type': 'add_node', 'node': {'id': 'speech', 'label': 'Speech', 'kind': 'topic', 'status': 'named'}}, {})
@@ -325,7 +348,7 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
         # Classified at enqueue time, before any provider call or patch.
         desired = self.session._desired
         self.assertEqual([desired[f'topic-{i}']['group'] for i in (1, 2, 3)], ['topic-1', 'topic-2', 'topic-3'])
-        self.assertEqual([desired[f'topic-{i}']['palette'] for i in (1, 2, 3)], ['blue', 'teal', 'green'])
+        self.assertEqual([desired[f'topic-{i}']['palette'] for i in (1, 2, 3)], ['blue', 'green', 'teal'])
         basis = {key: dict(node) for key, node in desired.items()}
         self.session._enqueue_meaning({'type': 'add_node', 'node': {
             'id': 'contrast', 'label': 'Contrast', 'parent_id': 'topic-2'}}, basis)
@@ -344,13 +367,13 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
         self.session._enqueue({'type': 'add_node', 'node': {'id': 'b', 'label': 'B'}}, 'meaning')
         self.session._enqueue({'type': 'add_node', 'node': {'id': 'c', 'label': 'C', 'parent_id': 'a'}}, 'meaning')
         desired = self.session._desired
-        self.assertEqual([desired[k]['palette'] for k in 'abc'], ['blue', 'teal', 'green'])
+        self.assertEqual([desired[k]['palette'] for k in 'abc'], ['blue', 'green', 'teal'])
         # Sparse updates, model groups and hints for an existing group keep colours.
         self.session._enqueue({'type': 'update_node', 'node': {'id': 'c', 'label': 'C2', 'group': None}}, 'meaning')
         self.session._enqueue({'type': 'update_node', 'node': {'id': 'b', 'label': 'B2', 'palette': 'rose'}}, 'meaning')
         self.session._enqueue({'type': 'update_node', 'node': {'id': 'c', 'group': 'b'}}, 'meaning')
-        self.assertEqual((desired['c']['group'], desired['c']['palette']), ('c', 'green'))
-        self.assertEqual(desired['b']['palette'], 'teal')
+        self.assertEqual((desired['c']['group'], desired['c']['palette']), ('c', 'teal'))
+        self.assertEqual(desired['b']['palette'], 'green')
         # A new group honours an unused hint; blue stays reserved for the first group.
         self.session._enqueue({'type': 'add_node', 'node': {'id': 'd', 'label': 'D', 'palette': 'plum'}}, 'meaning')
         self.session._enqueue({'type': 'add_node', 'node': {'id': 'e', 'label': 'E', 'palette': 'blue'}}, 'meaning')

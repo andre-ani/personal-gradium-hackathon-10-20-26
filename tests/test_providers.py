@@ -74,6 +74,16 @@ class RefinementContractTests(unittest.TestCase):
         result = self.parse({'type': 'update_node', 'node': {'id': 'topic-1', 'label': 'Launch plan'}})
         self.assertEqual(result['node'], {'id': 'topic-1', 'label': 'Launch plan', 'kind': 'topic', 'status': 'placeholder'})
 
+    def test_update_node_reparents_under_a_new_section(self):
+        from providers import _parse_refinement
+        graph = {'nodes': [{'id': 'root', 'label': 'Baking cupcakes', 'kind': 'topic', 'status': 'named'},
+                           {'id': 'mix', 'label': 'Mix dry', 'kind': 'task', 'status': 'named', 'parent_id': 'root'}]}
+        ops = _parse_refinement({'operations': [
+            {'type': 'add_node', 'node': {'id': 'prep', 'label': 'Prep', 'kind': 'topic', 'status': 'named', 'parent_id': 'root'}},
+            {'type': 'update_node', 'node': {'id': 'mix', 'parent_id': 'prep'}}], 'question': None}, graph)['operations']
+        self.assertEqual(ops[1]['type'], 'update_node')
+        self.assertEqual((ops[1]['node']['parent_id'], ops[1]['node']['label']), ('prep', 'Mix dry'))
+
     def test_rejects_transcript_sized_labels_and_matches_wire_limit(self):
         from providers import REFINEMENT_SCHEMA
         with self.assertRaises(ProviderUnavailable):
@@ -175,8 +185,13 @@ class RefinePromptTests(unittest.IsolatedAsyncioTestCase):
         for rule in ('"You:" (the user) or "Cara:"', 'only when she is explaining or mapping a topic',
                      'map out photosynthesis for me', 'produce NO operations', 'never add a duplicate', 'always reuse its existing ID',
                      'Never add a rephrasing, near-synonym',
-                     'Never ask a question about Cara', 'Return no operations for filler'):
+                     'Never ask a question about Cara', 'Return no operations for filler',
+                     'Build HIERARCHY first', 'Level 2: 2-5 sections', 'ONLY between siblings in the same series',
+                     'never chain an entire map', 'with a fitting kind (question, decision, idea)',
+                     'when 4 or more siblings accumulate', 'update_node setting the new parent_id',
+                     'BAD is one flat chain', 'GOOD is root "Baking cupcakes"'):
             self.assertIn(rule, prompt)
+        self.assertNotIn('the actual stages form a chain', prompt)
         self.assertEqual(json.loads(sent['messages'][1]['content'])['transcript'], transcript)
 
 
