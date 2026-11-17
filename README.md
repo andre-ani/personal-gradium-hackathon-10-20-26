@@ -1,4 +1,4 @@
-> [Open Thread — the current live demo](https://thread-production-db1e.up.railway.app/).
+> **Hosted demo is offline** to prevent unrestricted API usage. Both Railway deployments are stopped and automatic deployments are disconnected. You can still [run locally](#run-locally).
 > `main` contains the latest version. The original hackathon entry is preserved in the [immutable submission release](https://github.com/andre-ani/personal-gradium-hackathon-10-20-26/releases/tag/hackathon-submission).
 > See [deployment and submission history](docs/post-hackathon.md).
 

@@ -4,14 +4,16 @@ On 2026-11-16, after the hackathon finished, the owner authorized promoting the 
 
 ## Current version
 
+**Hosting is offline.** On 2026-11-16 the owner requested taking both Railway deployments down to prevent public API usage. Neither service has an active deployment or connected GitHub source. Do not bring them back online without explicit authorization.
+
 - Source: `main` in [the public repository](https://github.com/andre-ani/personal-gradium-hackathon-10-20-26).
-- Canonical demo: https://thread-production-db1e.up.railway.app/.
+- Primary URL (offline): https://thread-production-db1e.up.railway.app/.
 - Railway project: `thread-gradium`, environment: `production`, service: `thread` (`4cdf1f7e-65cb-415a-b47b-16cb3dc804c0`).
-- Deployment source: the repository's `main` branch; pushes deploy automatically.
+- Previous deployment source: the repository's `main` branch. It is now disconnected; pushes do not deploy.
 - One Python process and one replica, using the committed Dockerfile and wsproto. Graph and voice WebSockets share in-memory state; restarts clear maps and cached illustrations.
 - The existing Vercel redirect points to the canonical Railway URL. Vercel is not the live voice runtime.
 
-The separate `thread-post-hackathon` service (`28ded51c-d9c2-4fd9-ae7b-7cf14afa714e`) remains a preview following `post-hackathon` at https://thread-post-hackathon-production.up.railway.app/. It is not the canonical demo.
+The separate `thread-post-hackathon` service (`28ded51c-d9c2-4fd9-ae7b-7cf14afa714e`) is also offline at https://thread-post-hackathon-production.up.railway.app/. Its former `post-hackathon` GitHub source is disconnected.
 
 ## Archived submission
 

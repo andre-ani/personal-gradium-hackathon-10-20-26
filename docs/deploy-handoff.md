@@ -2,7 +2,7 @@
 
 Goal: get the current `main` running at a public **HTTPS** URL where someone can open the page, allow the microphone, talk to Cara and watch the map draw.
 
-Canonical deployment: Railway project `thread-gradium`, production service `thread`, connected to `main`, at https://thread-production-db1e.up.railway.app/. The hackathon submission is archived by its immutable release; `main` is no longer frozen. See [submission history](post-hackathon.md).
+**Hosting is offline at the owner's request as of 2026-11-16.** Both `thread` and `thread-post-hackathon` in Railway project `thread-gradium` have been stopped and disconnected from GitHub. Do not deploy or reconnect them without explicit authorization. The former primary URL is https://thread-production-db1e.up.railway.app/. The hackathon submission is archived by its immutable release; `main` is no longer frozen. See [submission history](post-hackathon.md).
 
 ## What it is
 
