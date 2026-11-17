@@ -1,7 +1,6 @@
-> **Post-hackathon development** — this branch contains work after the submitted baseline.
-> [Open the separate post-hackathon preview](https://thread-post-hackathon-production.up.railway.app/).
-> Judges: use the [immutable Hackathon submission release](https://github.com/andre-ani/personal-gradium-hackathon-10-20-26/releases/tag/hackathon-submission) or the frozen `main` branch.
-> See [development boundaries](docs/post-hackathon.md) before deploying.
+> [Open Thread — the current live demo](https://thread-production-db1e.up.railway.app/).
+> `main` contains the latest version. The original hackathon entry is preserved in the [immutable submission release](https://github.com/andre-ani/personal-gradium-hackathon-10-20-26/releases/tag/hackathon-submission).
+> See [deployment and submission history](docs/post-hackathon.md).
 
 <p align="center">
   <picture>
@@ -39,4 +38,4 @@ Fill `.env` with valid `GRADIUM_API_KEY`, `LLM_API_KEY`, `LLM_BASE_URL`, and `LL
 
 - [OpenWiki evidence index](openwiki/index.md) — architecture and workflow context; current source takes precedence.
 - Adapted from [Gradbot simple_chat](https://github.com/gradium-ai/gradbot/tree/main/demos/simple_chat), under the included [MIT license](LICENSE-MIT).
-- Header and static stack badges use [ShieldCN](https://shieldcn.dev). No public repository statistics or CI claims are exposed for this private repo.
+- Header and static stack badges use [ShieldCN](https://shieldcn.dev).

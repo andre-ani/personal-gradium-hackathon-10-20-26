@@ -72,7 +72,7 @@ class VoicePromptTests(unittest.TestCase):
 
     def test_prompt_maps_requested_topics_out_loud(self):
         prompt = main.SYSTEM_PROMPT
-        for rule in ('map, explain, brainstorm, or "write" a topic', 'Say the central topic first',
+        for rule in ('map, draw, diagram, explain, brainstorm, or "write" a topic', 'Say the central topic first',
                      '3 to 6 main branches', 'its own short sentence', 'Don\'t say "I will now map this."',
                      '"Ooh, okay. Photosynthesis."', '"I can go deeper on one."', 'ending with a period',
                      'If they cut in, stop and listen', 'Chit-chat is never drawn'):
@@ -87,7 +87,8 @@ class VoicePromptTests(unittest.TestCase):
 class VoiceStyleToolTests(unittest.IsolatedAsyncioTestCase):
     def test_tools_are_defined_with_supported_languages(self):
         tools = {tool.name: json.loads(tool.parameters_json) for tool in main.TOOLS}
-        self.assertEqual(set(tools), {'inspect_graph', 'refine_graph', 'set_language', 'change_voice'})
+        self.assertEqual(set(tools), {'inspect_graph', 'refine_graph', 'set_language', 'change_voice',
+                                     'edit_map', 'arrange_map', 'move_card'})
         self.assertEqual(tools['set_language']['properties']['language']['enum'], ['en', 'fr', 'de', 'es', 'pt'])
         self.assertIn('back_to_normal', tools['change_voice']['properties'])
 
@@ -218,4 +219,6 @@ class GraphSocketTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(main, 'GraphSession', FakeSession):
             await main.graph_socket(FakeSocket())
         self.assertEqual(ingested, [('Photosynthesis.', 'append', 'assistant'), ('my idea', 'append', 'user')])
-        self.assertEqual([e['type'] for e in sent], ['graph_session', 'graph_error'])
+        self.assertEqual([e['type'] for e in sent if e['type'] != 'debug_event'],
+                         ['graph_session', 'graph_error'])
+        self.assertEqual(sent[-1]['message'], 'speaker')

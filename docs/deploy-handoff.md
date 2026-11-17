@@ -2,6 +2,8 @@
 
 Goal: get the current `main` running at a public **HTTPS** URL where someone can open the page, allow the microphone, talk to Cara and watch the map draw.
 
+Canonical deployment: Railway project `thread-gradium`, production service `thread`, connected to `main`, at https://thread-production-db1e.up.railway.app/. The hackathon submission is archived by its immutable release; `main` is no longer frozen. See [submission history](post-hackathon.md).
+
 ## What it is
 
 - One Python 3.12 process: FastAPI app `main:app`, served by uvicorn with **wsproto** websockets.
@@ -9,7 +11,7 @@ Goal: get the current `main` running at a public **HTTPS** URL where someone can
 - Browser ↔ server:
   - HTTP: `/`, `/static/*`, `/api/readiness`, `/api/audio-config`, `/api/illustrations/{id}`.
   - WebSockets: `/ws/chat` (voice, gradbot/Gradium audio) and `/ws/graph` (map patches).
-- Outbound calls from the server: Gradium (speech in/out), an OpenAI-compatible LLM endpoint (OpenRouter today) for Cara, graph refinement and image generation.
+- Outbound calls from the server: Gradium (speech in/out), the configured OpenAI-compatible LLM endpoint for Cara and graph refinement, and the configured image-generation provider.
 
 ## Requirements
 
@@ -36,7 +38,7 @@ uv run uvicorn main:app --host 0.0.0.0 --port "${PORT:-8000}" --ws wsproto
 | Variable | Needed | Purpose |
 | --- | --- | --- |
 | `GRADIUM_API_KEY` | yes | Gradium speech-to-text, Cara's voices (Sunnie plus built-in catalog voices) |
-| `LLM_API_KEY` | yes | OpenAI-compatible key (OpenRouter today) |
+| `LLM_API_KEY` | yes | OpenAI-compatible provider key |
 | `LLM_BASE_URL` | yes | e.g. the OpenRouter `/api/v1` base URL |
 | `LLM_MODEL` | yes | Cara's conversation model |
 | `GRAPH_MODEL` | optional | Map refinement model (currently `google/gemini-2.5-flash`); defaults to `LLM_MODEL` |
@@ -59,7 +61,7 @@ Copy the values from the owner's local `.env` (do not print them in logs).
 
 - Memory-only state; one instance only (see above).
 - Gradium free tier is non-commercial. Voice changes use built-in catalog voices, so no custom-voice quota is used.
-- Each spoken turn costs LLM calls (refinement) and some images (~3–5 s each). Watch provider spend.
+- Interactive voice, typed refinement and uncached illustrations consume provider usage. There is currently no authentication, visitor quota, session deadline or global spending budget. Before publicity, gate live access or add bounded trials and provider-side budgets. Railway hosting limits do not cap third-party API bills.
 - If refinement fails with HTTP 400, check server logs for the provider message (it is logged server-side only).
 - The browser preview tools block the mic; test in a real browser.
 
